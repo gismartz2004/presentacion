@@ -23,6 +23,22 @@ export const INITIAL_PRODUCTS: Product[] = [
   },
   {
     id: 2,
+    name: "Grifo de Cocina Industrial Matte",
+    category: "Detalles Hogar",
+    price: 320,
+    image: "https://images.unsplash.com/photo-1584622650111-993a426fbf0a?auto=format&fit=crop&q=80&w=800",
+    stock: 15
+  },
+  {
+    id: 3,
+    name: "Cerradura Digital Biométrica",
+    category: "Detalles Hogar",
+    price: 280,
+    image: "https://images.unsplash.com/photo-1558002038-1055907df827?auto=format&fit=crop&q=80&w=800",
+    stock: 8
+  },
+  {
+    id: 4,
     name: "Silla Comedor Viena",
     category: "Juegos de Comedor",
     price: 180,
@@ -30,36 +46,20 @@ export const INITIAL_PRODUCTS: Product[] = [
     stock: 24
   },
   {
-    id: 3,
-    name: "Mesa de Centro Nogal",
-    category: "Interiores",
-    price: 320,
-    image: "https://images.unsplash.com/photo-1533090481720-856c6e3c1fdc?auto=format&fit=crop&q=80&w=800",
-    stock: 5
-  },
-  {
-    id: 4,
-    name: "Lámpara de Pie Arco",
-    category: "Iluminación",
-    price: 210,
-    image: "https://images.unsplash.com/photo-1507473885765-e6ed057f782c?auto=format&fit=crop&q=80&w=800",
-    stock: 8
-  },
-  {
     id: 5,
+    name: "Set Grifería Baño Cobre",
+    category: "Detalles Hogar",
+    price: 450,
+    image: "https://images.unsplash.com/photo-1620626011761-9963d7521476?auto=format&fit=crop&q=80&w=800",
+    stock: 10
+  },
+  {
+    id: 6,
     name: "Juego Comedor Nordic",
     category: "Juegos de Comedor",
     price: 1200,
     image: "https://images.unsplash.com/photo-1617806118233-18e1de247200?auto=format&fit=crop&q=80&w=800",
     stock: 3
-  },
-  {
-    id: 6,
-    name: "Anaquel Modular Gris",
-    category: "Anaqueles",
-    price: 550,
-    image: "https://images.unsplash.com/photo-1595428774223-ef52624120d2?auto=format&fit=crop&q=80&w=800",
-    stock: 10
   }
 ];
 
