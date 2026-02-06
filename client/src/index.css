@@ -2,26 +2,26 @@
 @import "tw-animate-css";
 
 @theme inline {
-  --color-background: hsl(210 40% 98%);
-  --color-foreground: hsl(220 20% 15%);
+  --color-background: hsl(40 30% 95%); /* Soft Beige */
+  --color-foreground: hsl(220 60% 10%); /* Deep Navy */
   
-  --color-primary: hsl(230 60% 30%);
-  --color-primary-foreground: hsl(210 40% 98%);
+  --color-primary: hsl(220 60% 15%); /* Navy Blue */
+  --color-primary-foreground: hsl(40 30% 98%);
   
-  --color-secondary: hsl(190 40% 92%);
-  --color-secondary-foreground: hsl(220 20% 15%);
+  --color-secondary: hsl(25 40% 30%); /* Coffee/Brown */
+  --color-secondary-foreground: hsl(40 30% 98%);
   
-  --color-muted: hsl(210 20% 94%);
-  --color-muted-foreground: hsl(220 10% 45%);
+  --color-muted: hsl(40 20% 90%);
+  --color-muted-foreground: hsl(25 20% 40%);
   
-  --color-accent: hsl(15 90% 60%);
-  --color-accent-foreground: hsl(210 40% 98%);
+  --color-accent: hsl(25 40% 25%); /* Rich Coffee */
+  --color-accent-foreground: hsl(40 30% 98%);
   
-  --color-border: hsl(210 20% 90%);
-  --color-input: hsl(210 20% 90%);
-  --color-ring: hsl(230 60% 30%);
+  --color-border: hsl(40 20% 85%);
+  --color-input: hsl(40 20% 88%);
+  --color-ring: hsl(220 60% 15%);
   
-  --radius: 0.75rem; 
+  --radius: 1.25rem; 
   
   --font-serif: "Cormorant Garamond", serif;
   --font-sans: "Montserrat", sans-serif;
