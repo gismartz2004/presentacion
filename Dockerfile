@@ -34,4 +34,4 @@ RUN npm install --omit=dev
 EXPOSE 8080
 
 # Start the production server
-CMD ["npm", "start"]
+CMD ["node", "dist/index.cjs"]

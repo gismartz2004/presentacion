@@ -1,0 +1,63 @@
+﻿diff --git a/Dockerfile b/Dockerfile
+index ad68438..ede9027 100644
+--- a/Dockerfile
++++ b/Dockerfile
+@@ -1,39 +1,37 @@
+-# Build Stage
+-FROM node:20-slim AS builder
++# Stage 1: Build Image
++FROM node:20-alpine AS builder
+ 
+ WORKDIR /app
+ 
+-# Copy package files
+-COPY package*.json ./
+-
+-# Install dependencies including dev dependencies for build
++# Copy specifically the dependency files to leverage layer caching
++COPY package.json package-lock.json* ./
+ RUN npm install
+ 
+-# Copy source code
++# Copy all source code
+ COPY . .
+ 
+-# Build the application
++# Run the project build script (builds client and server to /dist)
+ RUN npm run build
+ 
+-# Production Stage
+-FROM node:20-slim
++# Stage 2: Production Image
++FROM node:20-alpine AS runner
+ 
+ WORKDIR /app
+ 
+-# Copy package files
+-COPY package*.json ./
+-
+-# Install only production dependencies
+-RUN npm install --omit=dev
++ENV NODE_ENV=production
++# DEFAULT PORT for Cloud Run is 8080
++ENV PORT=8080
+ 
+-# Copy build artifacts from builder stage
++# Copy necessary files for production
+ COPY --from=builder /app/dist ./dist
+-COPY --from=builder /app/client/dist ./client/dist
+ COPY --from=builder /app/package.json ./package.json
+ 
+-# Expose the port Cloud Run will use
+-ENV PORT=5000
+-EXPOSE 5000
++# Install only production dependencies
++# Connect-pg-simple and others in the allowlist from build.ts should be here
++RUN npm install --omit=dev
++
++# Inform Docker about the intended port
++EXPOSE 8080
+ 
+-# Start the application
++# Start the production server
+ CMD ["npm", "start"]
