@@ -55,7 +55,7 @@ export function Banner() {
           >
             <motion.img 
               src={slides[selectedIndex].image} 
-              alt={slides[selectedIndex].title}
+              alt={`Florería DIFIORI - ${slides[selectedIndex].title}`}
               initial={{ scale: 1.15 }}
               animate={{ scale: 1 }}
               transition={{ duration: 25, ease: "linear" }}

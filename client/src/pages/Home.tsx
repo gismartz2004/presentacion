@@ -28,7 +28,9 @@ export default function Home() {
   };
 
   return (
-    <div className="min-h-screen bg-background selection:bg-accent selection:text-white overflow-clip scroll-smooth">
+    <main className="min-h-screen bg-background selection:bg-accent selection:text-white overflow-clip scroll-smooth">
+      <h1 className="sr-only">DIFIORI Floristería Guayaquil - Arreglos Florales, Ramos de Rosas y Regalos a Domicilio</h1>
+      
       {/* 1. Header is in App.tsx/Navbar.tsx */}
       
       {/* 2. Banner Section */}
@@ -59,7 +61,9 @@ export default function Home() {
             {/* Catálogo General Section */}
             <div id="catalogo" className="flex items-center gap-6 mb-12 opacity-30">
               <div className="h-[1px] flex-1 bg-foreground"></div>
-              <span className="text-foreground font-black uppercase tracking-[0.5em] text-[10px] whitespace-nowrap">Catálogo {activeCategory ? `- ${activeCategory}` : 'Maestro'}</span>
+              <h2 className="text-foreground font-black uppercase tracking-[0.5em] text-[10px] whitespace-nowrap">
+                Catálogo {activeCategory ? `- ${activeCategory}` : 'de Arreglos Florales'}
+              </h2>
               <div className="h-[1px] flex-1 bg-foreground"></div>
             </div>
 
@@ -199,6 +203,6 @@ export default function Home() {
            </div>
         </div>
       </motion.footer>
-    </div>
+    </main>
   );
 }

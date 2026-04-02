@@ -46,7 +46,7 @@ export function Navbar() {
                   key={link.label} 
                   href={link.href}
                   className={cn(
-                    "text-[10px] uppercase font-bold tracking-[0.3em] transition-all duration-500 relative group",
+                    "text-xs uppercase font-bold tracking-[0.25em] transition-all duration-500 relative group",
                     scrolled ? "text-foreground/70 hover:text-foreground" : "text-white/80 hover:text-white"
                   )}
                 >
@@ -77,7 +77,7 @@ export function Navbar() {
                   key={link.label} 
                   href={link.href}
                   className={cn(
-                    "text-[10px] uppercase font-bold tracking-[0.3em] transition-all duration-500 relative group hidden xl:block",
+                    "text-xs uppercase font-bold tracking-[0.25em] transition-all duration-500 relative group hidden xl:block",
                     scrolled ? "text-foreground/70 hover:text-foreground" : "text-white/80 hover:text-white"
                   )}
                 >
@@ -91,18 +91,15 @@ export function Navbar() {
 
               <div className="flex items-center gap-6 border-l pl-8 transition-colors duration-500" style={{ borderLeftColor: scrolled ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.2)' }}>
                 <button className={cn("transition-all hover:scale-110", scrolled ? "text-foreground/80 hover:text-accent" : "text-white/90 hover:text-white")}>
-                  <Search className="w-4 h-4" strokeWidth={1.5} />
-                </button>
-                <button className={cn("transition-all hover:scale-110", scrolled ? "text-foreground/80 hover:text-accent" : "text-white/90 hover:text-white")}>
-                  <User className="w-4 h-4" strokeWidth={1.5} />
+                  <Search className="w-5 h-5" strokeWidth={1.5} />
                 </button>
                 <Link href="/checkout">
                   <button className={cn(
                     "relative transition-all hover:scale-110 flex items-center gap-2",
                     scrolled ? "text-foreground/80 hover:text-accent" : "text-white/90 hover:text-white"
                   )}>
-                    <ShoppingBag className="w-4 h-4" strokeWidth={1.5} />
-                    <span className="text-[10px] font-medium tracking-widest">({cartItemCount})</span>
+                    <ShoppingBag className="w-5 h-5" strokeWidth={1.5} />
+                    <span className="text-xs font-medium tracking-widest">({cartItemCount})</span>
                   </button>
                 </Link>
               </div>
@@ -116,7 +113,7 @@ export function Navbar() {
               className={cn("p-1 transition-colors", scrolled ? "text-foreground" : "text-white")}
               onClick={() => setIsOpen(!isOpen)}
             >
-              <Menu strokeWidth={1.5} />
+              <Menu className="w-6 h-6" strokeWidth={1.5} />
             </button>
 
             <Link href="/" className="flex items-center absolute left-1/2 -translate-x-1/2">
@@ -128,9 +125,9 @@ export function Navbar() {
                 "relative p-1 transition-colors hover:scale-110",
                 scrolled ? "text-foreground" : "text-white"
               )}>
-                <ShoppingBag strokeWidth={1.5} />
+                <ShoppingBag className="w-6 h-6" strokeWidth={1.5} />
                 {cartItemCount > 0 && (
-                  <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-accent text-[8px] text-white flex items-center justify-center rounded-full font-black shadow-sm">{cartItemCount}</span>
+                  <span className="absolute -top-1 -right-1 w-4 h-4 bg-accent text-[9px] text-white flex items-center justify-center rounded-full font-black shadow-sm">{cartItemCount}</span>
                 )}
               </button>
             </Link>

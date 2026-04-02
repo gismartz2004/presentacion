@@ -44,26 +44,7 @@ export default function Checkout() {
                  <input className="w-full bg-[#3D2852]/50 p-5 rounded-2xl border border-[#5A3F73]/20 outline-none focus:border-[#5A3F73] text-[#E6E6E6] font-medium placeholder:text-[#E6E6E6]/30" placeholder="Celular (Para confirmaciones)..." />
                  <input type="datetime-local" className="w-full bg-[#3D2852]/50 p-5 rounded-2xl border border-[#5A3F73]/20 outline-none focus:border-[#5A3F73] text-[#E6E6E6] font-medium placeholder:text-[#E6E6E6]/30 [color-scheme:dark]" />
                  
-                 <div className="md:col-span-2 space-y-4">
-                   <div className="relative">
-                     <select 
-                       value={sector.name}
-                       onChange={(e) => setSector(SECTORS.find(s => s.name === e.target.value) || SECTORS[0])}
-                       className="w-full bg-[#3D2852]/50 p-6 rounded-2xl border border-[#5A3F73]/20 outline-none focus:border-[#5A3F73] text-[#E6E6E6] font-bold cursor-pointer appearance-none shadow-lg"
-                     >
-                       <option value="" disabled className="bg-[#2A1B38] text-white">Selecciona sector de entrega</option>
-                       {SECTORS.map(s => (
-                         <option key={s.name} value={s.name} className="bg-[#2A1B38] text-white py-2">
-                           {s.name} {s.price > 0 ? `(+$${s.price.toFixed(2)})` : '(Envío Gratis)'}
-                         </option>
-                       ))}
-                     </select>
-                     <div className="absolute right-6 top-1/2 -translate-y-1/2 pointer-events-none">
-                       <Truck className="w-5 h-5 text-[#5A3F73]" />
-                     </div>
-                   </div>
-                   <input className="w-full bg-[#3D2852]/50 p-5 rounded-2xl border border-[#5A3F73]/20 outline-none focus:border-[#5A3F73] text-[#E6E6E6] font-medium placeholder:text-[#E6E6E6]/30" placeholder="Dirección exacta (Ciudadela, Manzana, Villa)..." />
-                 </div>
+                 <input className="w-full md:col-span-2 bg-[#3D2852]/50 p-5 rounded-2xl border border-[#5A3F73]/20 outline-none focus:border-[#5A3F73] text-[#E6E6E6] font-medium placeholder:text-[#E6E6E6]/30" placeholder="Dirección exacta (Ciudadela, Manzana, Villa)..." />
                </div>
                <textarea className="w-full bg-[#3D2852]/50 p-5 rounded-2xl border border-[#5A3F73]/20 outline-none focus:border-[#5A3F73] text-[#E6E6E6] font-medium h-32 placeholder:text-[#E6E6E6]/30" placeholder="Mensaje para la tarjeta (Opcional)..."></textarea>
             </div>
@@ -136,6 +117,27 @@ export default function Checkout() {
                       </div>
                     ))
                   )}
+                </div>
+
+                <div className="mb-6 relative bg-[#3D2852]/20 p-5 rounded-2xl border border-[#5A3F73]/20">
+                   <label className="text-[10px] uppercase font-bold text-[#E6E6E6]/60 tracking-widest block mb-3">Zona de Entrega</label>
+                   <div className="relative">
+                     <select 
+                       value={sector.name}
+                       onChange={(e) => setSector(SECTORS.find(s => s.name === e.target.value) || SECTORS[0])}
+                       className="w-full bg-[#5A3F73]/20 p-4 rounded-xl border border-[#5A3F73]/30 outline-none focus:border-[#5A3F73] text-[#E6E6E6] text-sm font-bold cursor-pointer appearance-none"
+                     >
+                       <option value="" disabled className="bg-[#2A1B38] text-white">Selecciona sector...</option>
+                       {SECTORS.map(s => (
+                         <option key={s.name} value={s.name} className="bg-[#2A1B38] text-white">
+                           {s.name} {s.price > 0 ? `(+$${s.price.toFixed(2)})` : '(Gratis)'}
+                         </option>
+                       ))}
+                     </select>
+                     <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none">
+                       <ChevronLeft className="w-4 h-4 text-[#E6E6E6]/50 -rotate-90" />
+                     </div>
+                   </div>
                 </div>
 
                 <div className="space-y-4 pt-6 border-t border-[#5A3F73]/20">
