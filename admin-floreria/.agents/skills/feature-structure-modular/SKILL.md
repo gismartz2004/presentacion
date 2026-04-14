@@ -1,0 +1,87 @@
+---
+name: feature-structure-modular
+description: Estructurar frontend por features y subfeatures (opciones) con arquitectura modular escalable. Usar cuando se cree o refactorice una sección como Inventario, Ventas, Compras u otras áreas funcionales y se necesite definir carpetas, naming y responsabilidades por módulo/opción. Aplicar para decidir si una opción vive dentro de un módulo padre o como feature independiente.
+---
+
+# Feature Structure Modular
+
+Estructurar el código por dominio funcional, no por tipo global.
+
+## Objetivo
+
+Definir una estructura consistente para módulos (feature padre) y opciones (subfeature), con responsabilidades claras para `page`, `components` y `services`.
+
+## Reglas Base
+
+- Crear una carpeta por feature de negocio en `src/features/<feature-name>`.
+- Usar nombres en minúsculas con guiones: `inventario`, `ordenes-compra`, `movimientos-stock`.
+- Mantener imports relativos dentro de la feature cuando sea posible.
+- Evitar compartir componentes de una opción fuera de su scope sin elevarlos a nivel feature.
+
+## Estructura 1: Feature Con Opciones
+
+Usar cuando el dominio tiene varias opciones internas.
+
+```text
+src/
+  features/
+    inventario/
+      components/                # Reutilizables entre opciones de inventario
+      services/                  # APIs comunes de inventario
+      options/
+        productos/
+          page/
+            ProductosPage.tsx
+          components/            # Solo de productos
+          services/              # APIs solo de productos
+          index.ts
+        categorias/
+          page/
+            CategoriasPage.tsx
+          components/
+          services/
+          index.ts
+      index.ts
+```
+
+### Responsabilidades
+
+- `page/`: entrada de UI de la opción (pantalla/ruta).
+- `components/`: componentes reutilizables dentro de la feature u opción.
+- `services/`: clientes API, mapeadores DTO y funciones de acceso a datos.
+
+## Estructura 2: Feature Sin Módulo Padre
+
+Usar cuando la opción funciona como unidad independiente.
+
+```text
+src/
+  features/
+    proveedores/
+      page/
+        ProveedoresPage.tsx
+      components/
+      services/
+      index.ts
+```
+
+## Criterio De Decisión
+
+- Crear módulo padre + opciones cuando hay 2 o más opciones relacionadas por dominio.
+- Crear feature sola cuando no comparte contexto claro con otras opciones.
+- Mover a `feature/components` o `feature/services` solo lo que sea compartido por 2 o más opciones.
+
+## Convenciones Operativas
+
+- Exportar API pública por `index.ts` en cada nivel.
+- Mantener rutas cerca de `page/` de cada opción.
+- Colocar tipos de dominio cerca de `services/` si solo aplican a esa opción.
+- No mezclar lógica de API en `page` o en componentes de presentación.
+
+## Checklist De Aplicación
+
+- Identificar feature padre y opciones.
+- Elegir estructura: con opciones o feature sola.
+- Crear carpetas `page`, `components`, `services` por cada opción o feature.
+- Definir `index.ts` por nivel para imports limpios.
+- Verificar que cada archivo respete su responsabilidad.

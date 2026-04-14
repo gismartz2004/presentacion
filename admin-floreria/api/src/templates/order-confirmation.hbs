@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Confirmación de Pedido #{{orderNumber}}</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f9f9f9;
+        }
+        .container {
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+        .header {
+            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 2.2em;
+            font-weight: 300;
+        }
+        .checkmark {
+            font-size: 3em;
+            margin-bottom: 15px;
+        }
+        .content {
+            padding: 30px;
+        }
+        .order-summary {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+            border-left: 4px solid #28a745;
+        }
+        .order-info {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin: 20px 0;
+        }
+        .info-item {
+            padding: 10px 0;
+        }
+        .info-label {
+            font-weight: 600;
+            color: #666;
+            font-size: 0.9em;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .info-value {
+            font-size: 1.1em;
+            margin-top: 5px;
+        }
+        .next-steps {
+            background: #e7f3ff;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+            border-left: 4px solid #007bff;
+        }
+        .next-steps h3 {
+            color: #007bff;
+            margin-top: 0;
+        }
+        .steps-list {
+            margin: 0;
+            padding-left: 20px;
+        }
+        .steps-list li {
+            margin: 8px 0;
+        }
+        .footer {
+            background: #f8f9fa;
+            padding: 25px;
+            text-align: center;
+            border-top: 1px solid #e9ecef;
+        }
+        .footer p {
+            margin: 5px 0;
+            color: #6c757d;
+        }
+        .total-amount {
+            font-size: 1.8em;
+            font-weight: 700;
+            color: #28a745;
+            text-align: center;
+            margin: 15px 0;
+        }
+        
+        @media (max-width: 600px) {
+            .order-info {
+                grid-template-columns: 1fr;
+            }
+            .content {
+                padding: 20px;
+            }
+            .header {
+                padding: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <div class="checkmark">✅</div>
+            <h1>¡Pedido Confirmado!</h1>
+            <p>Tu pedido ha sido recibido y procesado exitosamente</p>
+        </div>
+
+        <!-- Content -->
+        <div class="content">
+            <p>Hola <strong>{{customerName}}</strong>,</p>
+            
+            <p>¡Gracias por tu compra! Hemos recibido tu pedido y el pago ha sido procesado correctamente. 
+            Te enviaremos actualizaciones sobre el estado de tu pedido a medida que avance.</p>
+
+            <!-- Order Summary -->
+            <div class="order-summary">
+                <h3 style="margin-top: 0; color: #28a745;">📋 Resumen del Pedido</h3>
+                
+                <div class="order-info">
+                    <div class="info-item">
+                        <div class="info-label">Número de Pedido</div>
+                        <div class="info-value">#{{orderNumber}}</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">Fecha del Pedido</div>
+                        <div class="info-value">{{createdAt}}</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">Email</div>
+                        <div class="info-value">{{customerEmail}}</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">Estado del Pago</div>
+                        {{#if isReservation}}
+                        <div class="info-value" style="color: #28a745; font-weight: 600;">✅ Reserva pagada</div>
+                        {{else}}
+                        <div class="info-value" style="color: #28a745; font-weight: 600;">✅ Pagado</div>
+                        {{/if}}
+                    </div>
+                </div>
+
+                <div class="total-amount">
+                    Total: ${{total}}
+                </div>
+
+                {{#if isReservation}}
+                <div style="background:#fff7e6;border:1px solid #ffe8bf;color:#7a5a10;padding:12px;border-radius:8px;margin-top:10px;">
+                    <div><strong>Este pedido es una reserva</strong></div>
+                    <div>Valor cobrado (reserva): <strong>{{formattedChargedAmount}}</strong></div>
+                    <div>Saldo pendiente al retiro/entrega: <strong>{{formattedRemainingBalance}}</strong></div>
+                </div>
+                {{/if}}
+            </div>
+
+            <!-- Next Steps -->
+            <div class="next-steps">
+                <h3>🚀 ¿Qué sigue?</h3>
+                <ol class="steps-list">
+                    <li><strong>Preparación:</strong> Comenzaremos a preparar tu pedido inmediatamente</li>
+                    <li><strong>Notificaciones:</strong> Te enviaremos actualizaciones por email sobre el progreso</li>
+                    <li><strong>Entrega/Recogida:</strong> Te notificaremos cuando esté listo para entregar o recoger</li>
+                    <li><strong>Disfruta:</strong> ¡Disfruta de tus deliciosos productos de panadería!</li>
+                </ol>
+            </div>
+
+            <p><strong>Información de contacto:</strong></p>
+            <p>Si tienes alguna pregunta sobre tu pedido, puedes contactarnos:</p>
+            <ul>
+                <li>📧 Email: {{companyEmail}}</li>
+                {{#if companyPhone}}
+                <li>📞 Teléfono: {{companyPhone}}</li>
+                {{/if}}
+            </ul>
+        </div>
+
+        <!-- Footer -->
+        <div class="footer">
+            <p><strong>¡Gracias por elegirnos!</strong></p>
+            <p>{{companyName}} - Horneando felicidad desde siempre</p>
+            <p style="font-size: 0.9em; color: #999;">
+                Este es un email automático, por favor no respondas a este mensaje.
+            </p>
+        </div>
+    </div>
+</body>
+</html>

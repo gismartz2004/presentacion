@@ -1,0 +1,648 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Company {
+  id                  String        @id @default(cuid())
+  name                String
+  slug                String        @unique
+  email               String        @unique
+  phone               String?
+  address             String?
+  logo                String?
+  website             String?
+  businessTypeId      String?
+  isActive            Boolean       @default(true)
+  isSetup             Boolean       @default(false)
+  settings            Json?
+  createdAt           DateTime      @default(now())
+  updatedAt           DateTime      @updatedAt
+  allowedDomains      String[]      @default([])
+  apiKey              String?       @unique
+  webhookSecret       String?       @unique
+  Tax                 Float         @default(0)
+  defaultShippingCost Float         @default(0)
+  users               Users[]
+  apiRequests         ApiRequest[]
+  businessType        BusinessType? @relation(fields: [businessTypeId], references: [id])
+  products            Product[]
+  reviews             Review[]
+
+  @@map("companies")
+}
+
+model ApiRequest {
+  id           String   @id @default(cuid())
+  companyId    String
+  endpoint     String
+  method       String
+  ipAddress    String
+  userAgent    String?
+  apiKeyUsed   String
+  origin       String?
+  statusCode   Int
+  responseTime Int
+  metadata     Json?
+  createdAt    DateTime @default(now())
+  company      Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@map("api_requests")
+}
+
+model BusinessType {
+  id               String           @id @default(cuid())
+  name             String           @unique
+  label            String
+  description      String?
+  isActive         Boolean          @default(true)
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+  business_filters BusinessFilter[]
+  companies        Company[]
+
+  @@map("business_types")
+}
+
+model BusinessFilter {
+  id             String       @id @default(cuid())
+  businessTypeId String
+  categoryId     String
+  isRequired     Boolean      @default(false)
+  sortOrder      Int          @default(0)
+  isActive       Boolean      @default(true)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  businessType   BusinessType @relation(fields: [businessTypeId], references: [id], onDelete: Cascade)
+
+  @@unique([businessTypeId, categoryId])
+  @@map("business_filters")
+}
+
+model Plan {
+  id            Int             @id @default(autoincrement())
+  name          String?
+  is_available  Boolean?
+  plan_features plan_features[]
+  tenants       tenants[]
+
+  @@map("plans")
+}
+
+model Users {
+  id        String    @id @default(cuid())
+  email     String    @unique
+  password  String
+  name      String
+  role      AdminRole @default(VIEWER)
+  isActive  Boolean   @default(true)
+  lastLogin DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  companyId String
+  company   Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  products  Product[]
+
+  @@map("admins")
+}
+
+model filter_categories {
+  id              String            @id @default(cuid())
+  name            String
+  description     String?
+  placeholder     String?
+  label           String
+  minRange        Float?
+  maxRange        Float?
+  type            FilterType
+  isActive        Boolean           @default(true)
+  sortOrder       Int               @default(0)
+  isRequired      Boolean           @default(false)
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+  isDeleted       Boolean           @default(false)
+  filter_options  filter_options[]
+  product_filters product_filters[]
+}
+
+model filter_options {
+  id              String            @id @default(cuid())
+  categoryId      String
+  value           String
+  label           String
+  isActive        Boolean           @default(true)
+  sortOrder       Int               @default(0)
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+  isDeleted       Boolean           @default(false)
+  category        filter_categories @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  product_filters product_filters[]
+}
+
+model product_filters {
+  id         String            @id @default(cuid())
+  productId  String
+  categoryId String
+  optionId   String
+  createdAt  DateTime          @default(now())
+  isDeleted  Boolean           @default(false)
+  category   filter_categories @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  option     filter_options    @relation(fields: [optionId], references: [id], onDelete: Cascade)
+  product    Product           @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([productId, categoryId, optionId])
+  @@index([productId])
+  @@index([categoryId])
+}
+
+model Product {
+  id                    String               @id @default(cuid())
+  name                  String
+  description           String?
+  price                 Float?
+  image                 String?
+  category              String
+  stock                 Int                  @default(0)
+  isActive              Boolean              @default(true)
+  featured              Boolean              @default(false)
+  hasVariants           Boolean              @default(false)
+  createdAt             DateTime             @default(now())
+  updatedAt             DateTime             @updatedAt
+  companyId             String
+  userId                String
+  priceIncludesShipping Boolean              @default(false)
+  priceIncludesTax      Boolean              @default(false)
+  isDeleted             Boolean              @default(false)
+  isLimited             Boolean              @default(false)
+  discounts_products    discounts_products[]
+  orderItems            OrderItem[]
+  product_filters       product_filters[]
+  product_promotions    product_promotions[]
+  variants              ProductVariant[]
+  company               Company              @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  user                  Users                @relation(fields: [userId], references: [id])
+
+  @@map("products")
+}
+
+model Review {
+  id        String   @id @default(cuid())
+  name      String
+  content   String
+  stars     Int      @default(5)
+  role      String?  @default("Cliente")
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  companyId String
+  company   Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@map("reviews")
+}
+
+model ProductVariant {
+  id        String   @id @default(cuid())
+  productId String
+  name      String
+  price     Float
+  isActive  Boolean  @default(true)
+  isDefault Boolean  @default(false)
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  userId    String
+  isDeleted Boolean  @default(false)
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@map("product_variants")
+}
+
+model Order {
+  id                                             String      @id @default(cuid())
+  orderNumber                                    String      @unique
+  sequentialNumber                               Int?
+  customerName                                   String
+  customerLastName                               String
+  customerProvince                               String?
+  billingPrincipalAddress                        String
+  billingSecondAddress                           String?
+  customerReference                              String?
+  subtotal                                       Float
+  tax                                            Float       @default(0)
+  shipping                                       Float?      @default(0)
+  total                                          Float
+  paymentStatus                                  String      @default("PENDING")
+  status                                         OrderStatus @default(PENDING)
+  deliveryNotes                                  String?
+  createdAt                                      DateTime    @default(now())
+  updatedAt                                      DateTime?   @updatedAt
+  paidAt                                         DateTime?
+  updatedBy                                      String?
+  source                                         String?
+  sourceIp                                       String?
+  sourceUserAgent                                String?
+  verifiedWebhook                                Boolean?    @default(false)
+  Courier                                        Courier     @default(Servientrega)
+  billingContactName                             String?
+  billingCity                                    String?
+  customerEmail                                  String?
+  orderNotes                                     String?
+  customerPhone                                  String?
+  total_discount_amount                          Float       @default(0)
+  product_discounted_amount                      Float       @default(0)
+  code_discounted_amount                         Float       @default(0)
+  coupon_discounted_amount                       Float       @default(0)
+  discount_coupon_percent                        Float?      @default(0)
+  discount_code_percent                          Float?      @default(0)
+  discount_coupon_id                             Int?
+  discount_code_id                               Int?
+  cashOnDelivery                                 Boolean     @default(false)
+  clientTransactionId                            String?     @unique
+  couponDiscountCode                             String?
+  payPhoneAuthCode                               String?
+  payPhoneTransactionId                          String?
+  orderItems                                     OrderItem[]
+  discounts_orders_discount_code_idTodiscounts   discounts?  @relation("orders_discount_code_idTodiscounts", fields: [discount_code_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "orders_code_discount_fk")
+  discounts_orders_discount_coupon_idTodiscounts discounts?  @relation("orders_discount_coupon_idTodiscounts", fields: [discount_coupon_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "orders_coupon_discount_fk")
+
+  @@map("orders")
+}
+
+model OrderItem {
+  id                 String   @id @default(cuid())
+  quantity           Int
+  price              Float
+  variantName        String?
+  orderId            String
+  productId          String
+  variantId          String?
+  createdAt          DateTime @default(now())
+  discounts_percents String?
+  discounts_ids      String?
+  order              Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product            Product  @relation(fields: [productId], references: [id])
+
+  @@map("order_items")
+}
+
+model Sequence {
+  id        String    @id @default(cuid())
+  type      String    @unique
+  current   Int       @default(1)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime? @default(now()) @updatedAt
+
+  @@map("order_sequences")
+}
+
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+model email_suscriptions {
+  id            String    @id
+  email         String    @unique
+  discount_code String
+  is_used       Boolean   @default(false)
+  created_at    DateTime  @default(now())
+  sent_at       DateTime?
+}
+
+model discount_types {
+  id                  Int         @id @default(autoincrement())
+  type_name           String?
+  description         String?
+  display_description String?
+  discounts           discounts[]
+}
+
+model discounts {
+  id                                          Int                  @id @default(autoincrement())
+  percent                                     Int?
+  description                                 String?
+  discount_type                               Int
+  percent_value                               Decimal?             @db.Decimal(10, 4)
+  display_description                         String?
+  starts_at                                   DateTime?
+  ends_at                                     DateTime?
+  priority                                    Int?                 @default(0)
+  stackable                                   Boolean?             @default(false)
+  code                                        String?              @unique
+  code_auto_generated                         Boolean              @default(false)
+  max_uses                                    Int?
+  uses                                        Int                  @default(0)
+  is_active                                   Boolean              @default(true)
+  discount_types                              discount_types       @relation(fields: [discount_type], references: [id], onDelete: Cascade)
+  discounts_products                          discounts_products[]
+  orders_orders_discount_code_idTodiscounts   Order[]              @relation("orders_discount_code_idTodiscounts")
+  orders_orders_discount_coupon_idTodiscounts Order[]              @relation("orders_discount_coupon_idTodiscounts")
+}
+
+model discounts_products {
+  id          Int       @id @default(autoincrement())
+  discount_id Int
+  product_id  String
+  discounts   discounts @relation(fields: [discount_id], references: [id], onDelete: Cascade)
+  products    Product   @relation(fields: [product_id], references: [id], onDelete: Cascade)
+}
+
+model features {
+  id            String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name          String?
+  display_name  String?
+  plan_features plan_features[]
+}
+
+model tenants {
+  id      String  @id(map: "tenant_pkey") @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name    String?
+  domain  String?
+  email   String?
+  plan_id Int?
+  plan    Plan?   @relation(fields: [plan_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model plan_features {
+  plan_id      Int
+  feature_id   String   @db.Uuid
+  is_available Boolean? @default(true)
+  features     features @relation(fields: [feature_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  plans        Plan     @relation(fields: [plan_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@id([plan_id, feature_id])
+  @@index([feature_id], map: "idx_plan_features_feature")
+}
+
+model automations {
+  id          String              @id
+  name        String              @unique
+  description String?
+  campaignId  String
+  frequency   AutomationFrequency
+  isActive    Boolean             @default(true)
+  lastRunAt   DateTime?
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime
+  campaigns   campaigns           @relation(fields: [campaignId], references: [id])
+  email_logs  email_logs[]
+}
+
+model campaigns {
+  id              String          @id
+  name            String          @unique
+  subject         String
+  segmentId       String
+  templateId      String
+  couponId        String?
+  status          CampaignStatus  @default(DRAFT)
+  metadata        Json?
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime
+  bannerText      String?
+  showInBanner    Boolean         @default(false)
+  endDate         DateTime?
+  isActive        Boolean         @default(false)
+  startDate       DateTime?
+  automations     automations[]
+  coupons         coupons?        @relation(fields: [couponId], references: [id])
+  segments        segments        @relation(fields: [segmentId], references: [id])
+  email_templates email_templates @relation(fields: [templateId], references: [id])
+  email_logs      email_logs[]
+}
+
+model coupon_usages {
+  id         String    @id
+  couponId   String
+  customerId String
+  orderId    String?
+  usedAt     DateTime  @default(now())
+  coupons    coupons   @relation(fields: [couponId], references: [id])
+  customers  customers @relation(fields: [customerId], references: [id])
+}
+
+model coupons {
+  id                 String          @id
+  code               String          @unique
+  type               CouponType
+  value              Float
+  minAmount          Float?
+  validFrom          DateTime
+  validUntil         DateTime
+  maxUsesPerCustomer Int             @default(1)
+  maxUsesTotal       Int?
+  usesTotal          Int             @default(0)
+  isActive           Boolean         @default(true)
+  customerId         String?
+  campaignId         String?
+  automationId       String?
+  createdAt          DateTime        @default(now())
+  updatedAt          DateTime
+  campaigns          campaigns[]
+  coupon_usages      coupon_usages[]
+  customers          customers?      @relation(fields: [customerId], references: [id])
+}
+
+model customers {
+  id               String          @id
+  email            String          @unique
+  name             String
+  lastName         String?
+  phone            String?
+  city             String?
+  acceptsMarketing Boolean         @default(false)
+  birthday         DateTime?
+  totalSpent       Float           @default(0)
+  purchaseCount    Int             @default(0)
+  lastPurchaseAt   DateTime?
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime
+  coupon_usages    coupon_usages[]
+  coupons          coupons[]
+  email_logs       email_logs[]
+}
+
+model email_logs {
+  id              String          @id
+  customerId      String
+  campaignId      String?
+  automationId    String?
+  templateId      String
+  subject         String
+  sentAt          DateTime        @default(now())
+  status          EmailStatus     @default(SENT)
+  error           String?
+  metadata        Json?
+  automations     automations?    @relation(fields: [automationId], references: [id])
+  campaigns       campaigns?      @relation(fields: [campaignId], references: [id])
+  customers       customers       @relation(fields: [customerId], references: [id])
+  email_templates email_templates @relation(fields: [templateId], references: [id])
+}
+
+model email_templates {
+  id          String       @id
+  name        String       @unique
+  type        TemplateType
+  subject     String
+  htmlContent String
+  variables   Json?
+  isActive    Boolean      @default(true)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime
+  campaigns   campaigns[]
+  email_logs  email_logs[]
+}
+
+model segments {
+  id          String      @id
+  name        String      @unique
+  description String?
+  rules       Json
+  isActive    Boolean     @default(true)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime
+  campaigns   campaigns[]
+}
+
+model home_craftsmanship {
+  id         Int      @id @default(autoincrement())
+  lang       String   @unique
+  title      String
+  subtitle   String?
+  buttonText String?
+  buttonLink String?
+  image      String?
+  updatedAt  DateTime
+  createdAt  DateTime @default(now())
+}
+
+model home_hero {
+  id             Int      @id @default(autoincrement())
+  lang           String   @unique
+  title          String
+  description    String?
+  nameLink       String?
+  images         Json?
+  link_women     String?
+  link_men       String?
+  backgroundType String   @default("video")
+  videoUrl       String?  @default("/video-home-hero.webm")
+  updatedAt      DateTime
+  createdAt      DateTime @default(now())
+}
+
+model product_promotions {
+  id          String     @id
+  promotionId String
+  productId   String
+  createdAt   DateTime   @default(now())
+  products    Product    @relation(fields: [productId], references: [id], onDelete: Cascade)
+  promotions  promotions @relation(fields: [promotionId], references: [id], onDelete: Cascade)
+
+  @@unique([promotionId, productId])
+  @@index([productId])
+  @@index([promotionId])
+}
+
+model promotions {
+  id                 String               @id
+  name               String
+  description        String?
+  type               PromotionType
+  value              Float
+  startsAt           DateTime
+  endsAt             DateTime?
+  minQuantity        Int?
+  minAmount          Float?
+  isActive           Boolean              @default(true)
+  isAutomatic        Boolean              @default(true)
+  createdAt          DateTime             @default(now())
+  updatedAt          DateTime
+  product_promotions product_promotions[]
+}
+
+enum SubscriptionStatus {
+  TRIAL
+  ACTIVE
+  PAST_DUE
+  CANCELED
+  EXPIRED
+  SUSPENDED
+}
+
+enum FilterType {
+  SELECT
+  MULTISELECT
+  RANGE
+  TOGGLE
+  COLOR
+  SIZE
+  RATING
+}
+
+enum Courier {
+  Servientrega
+  LaarCourier
+  Speed
+}
+
+enum OrderStatus {
+  PENDING
+  CONFIRMED
+  PREPARING
+  READY
+  DELIVERED
+  CANCELLED
+}
+
+enum PaymentStatus {
+  PENDING
+  PROCESSING
+  SUCCEEDED
+  FAILED
+  REFUNDED
+}
+
+enum AdminRole {
+  VIEWER
+  ADMIN
+  EDITOR
+}
+
+enum AutomationFrequency {
+  DAILY
+  WEEKLY
+  MONTHLY
+}
+
+enum CampaignStatus {
+  DRAFT
+  ACTIVE
+  PAUSED
+  COMPLETED
+}
+
+enum CouponType {
+  PERCENTAGE
+  FIXED
+}
+
+enum EmailStatus {
+  SENT
+  FAILED
+  BOUNCED
+}
+
+enum TemplateType {
+  BIRTHDAY
+  WINBACK
+  SEASONAL
+  GENERIC
+}
+
+enum PromotionType {
+  PERCENTAGE
+  FIXED_AMOUNT
+  BUY_X_GET_Y
+  FREE_SHIPPING
+}

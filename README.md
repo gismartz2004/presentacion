@@ -74,3 +74,18 @@ Asegúrate de configurar estas variables en el servicio de Cloud Run:
 - `npm run build`: Genera la versión de producción.
 - `npm start`: Inicia el servidor en producción (después de compilar).
 - `npm run check`: Verifica errores de TypeScript.
+
+
+Levantar el Backend (Puerto 4001):
+cd admin-floreria/api
+npm install
+Configurar .env (DATABASE_URL, JWT_SECRET).
+npx prisma generate
+npm run dev
+Levantar el Panel Admin (Puerto 3000):
+cd admin-floreria/client
+npm install
+npm run dev -- --port 3000
+Levantar la Boutique DIFIORI (Puerto 5000):
+Desde la raíz: npm install
+npm run dev:client

@@ -1,6 +1,6 @@
-import React, { useState } from "react";
-import { ShoppingBag, ChevronLeft, CreditCard, Truck, User, Upload } from "lucide-react";
-import { Link } from "wouter";
+import React, { useState, useRef } from "react";
+import { ShoppingBag, ChevronLeft, CreditCard, Truck, User, Upload, CheckCircle, Loader2 } from "lucide-react";
+import { Link, useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { useCart } from "@/context/CartContext";
@@ -14,12 +14,169 @@ const SECTORS = [
   { name: "Durán", price: 6 }
 ];
 
+type OrderStatus = "idle" | "loading" | "success" | "error";
+
 export default function Checkout() {
-  const { items, cartTotal } = useCart();
+  const { items, cartTotal, clearCart } = useCart();
+  const [, setLocation] = useLocation();
   const [paymentMethod, setPaymentMethod] = useState("Transferencia");
   const [sector, setSector] = useState(SECTORS[0]);
+  const [orderStatus, setOrderStatus] = useState<OrderStatus>("idle");
+  const [orderNumber, setOrderNumber] = useState("");
+  const [errorMsg, setErrorMsg] = useState("");
+  const [couponCode, setCouponCode] = useState("");
+  const [appliedCoupon, setAppliedCoupon] = useState<{
+    code: string;
+    percent_value: number;
+    amount: number | null;
+    type: string;
+  } | null>(null);
+  const [isValidatingCoupon, setIsValidatingCoupon] = useState(false);
 
-  const finalTotal = cartTotal + sector.price;
+  // Form refs
+  const receiverNameRef = useRef<HTMLInputElement>(null);
+  const senderNameRef = useRef<HTMLInputElement>(null);
+  const phoneRef = useRef<HTMLInputElement>(null);
+  const dateTimeRef = useRef<HTMLInputElement>(null);
+  const addressRef = useRef<HTMLInputElement>(null);
+  const cardMessageRef = useRef<HTMLTextAreaElement>(null);
+
+  const cartSubtotal = cartTotal;
+  const shippingCost = sector.price;
+  
+  let discountAmount = 0;
+  if (appliedCoupon) {
+    if (appliedCoupon.type === "PERCENTAGE") {
+      discountAmount = cartSubtotal * appliedCoupon.percent_value;
+    } else if (appliedCoupon.amount) {
+      discountAmount = appliedCoupon.amount;
+    }
+  }
+
+  const finalTotal = cartSubtotal + shippingCost - discountAmount;
+
+  const handleValidateCoupon = async () => {
+    if (!couponCode) return;
+    setIsValidatingCoupon(true);
+    setErrorMsg("");
+    try {
+      const res = await fetch(`/api/checkout/get-coupon-discount?code=${couponCode}`);
+      const data = await res.json();
+      if (res.ok && data.status === "success") {
+        const coupon = data.data;
+        if (coupon.minAmount && cartSubtotal < coupon.minAmount) {
+          setErrorMsg(`El cupón requiere una compra mínima de $${coupon.minAmount}`);
+          setAppliedCoupon(null);
+        } else {
+          setAppliedCoupon(coupon);
+        }
+      } else {
+        setErrorMsg(data.message || "Cupón no válido");
+        setAppliedCoupon(null);
+      }
+    } catch (err) {
+      setErrorMsg("Error al validar el cupón");
+    } finally {
+      setIsValidatingCoupon(false);
+    }
+  };
+
+  const handleConfirmOrder = async () => {
+    const receiverName = receiverNameRef.current?.value || "";
+    const senderName = senderNameRef.current?.value || "";
+    const phone = phoneRef.current?.value || "";
+    const deliveryDateTime = dateTimeRef.current?.value || "";
+    const exactAddress = addressRef.current?.value || "";
+    const cardMessage = cardMessageRef.current?.value || "";
+
+    if (!receiverName || !senderName || !phone) {
+      setErrorMsg("Por favor completa: nombre de quien recibe, quien envía y celular.");
+      return;
+    }
+
+    setErrorMsg("");
+    setOrderStatus("loading");
+
+    const firstItem = items[0];
+
+    try {
+      const res = await fetch("/api/external/store-orders", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          productId: firstItem?.product.id,
+          productName: firstItem?.product.name,
+          productPrice: firstItem?.product.price,
+          quantity: firstItem?.quantity || 1,
+          receiverName,
+          senderName,
+          phone,
+          deliveryDateTime,
+          exactAddress,
+          sector: sector.name,
+          shippingCost: sector.price,
+          cardMessage,
+          paymentMethod,
+          total: cartSubtotal + shippingCost, // Enviamos el total sin descuento manual, el backend lo recalcula con el couponCode
+          couponCode: appliedCoupon?.code || null,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (res.ok && data.status === "success") {
+        setOrderNumber(data.data?.orderNumber || "DIFIORI-OK");
+        setOrderStatus("success");
+        clearCart();
+      } else {
+        setErrorMsg(data.message || "Hubo un error al procesar tu orden. Contáctanos por WhatsApp.");
+        setOrderStatus("error");
+      }
+    } catch {
+      setErrorMsg("No se pudo conectar con el servidor. Contáctanos por WhatsApp: +593 xx xxx xxxx");
+      setOrderStatus("error");
+    }
+  };
+
+  // Pantalla de éxito
+  if (orderStatus === "success") {
+    return (
+      <div className="min-h-screen bg-[#3D2852] flex items-center justify-center px-6">
+        <motion.div
+          initial={{ opacity: 0, scale: 0.8 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="bg-[#2A1B38]/80 backdrop-blur-3xl p-14 rounded-[3rem] shadow-2xl border-2 border-[#5A3F73]/40 text-center max-w-lg w-full"
+        >
+          <motion.div
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
+            transition={{ type: "spring", delay: 0.2 }}
+          >
+            <CheckCircle className="w-24 h-24 text-green-400 mx-auto mb-6" />
+          </motion.div>
+          <h2 className="text-3xl font-serif font-bold text-[#E6E6E6] mb-3">¡Orden Confirmada!</h2>
+          <p className="text-[#5A3F73] font-black text-lg mb-2">{orderNumber}</p>
+          <p className="text-[#E6E6E6]/60 text-sm mb-8">
+            Hemos recibido tu pedido. Nuestro equipo se pondrá en contacto contigo pronto para coordinar la entrega.
+          </p>
+          {paymentMethod === "Transferencia" && (
+            <div className="bg-[#5A3F73]/20 border border-dashed border-[#5A3F73] rounded-2xl p-6 mb-8 text-left">
+              <p className="text-[#E6E6E6]/80 text-sm font-bold mb-2">📌 Recuerda realizar la transferencia:</p>
+              <p className="text-[#E6E6E6]/60 text-xs">Banco: Banco del Pichincha</p>
+              <p className="text-[#E6E6E6]/60 text-xs">Cta: 2205748975</p>
+              <p className="text-[#E6E6E6]/60 text-xs">Titular: DIFIORI</p>
+              <p className="text-[#E6E6E6]/60 text-xs mt-2">Envía el comprobante por WhatsApp.</p>
+            </div>
+          )}
+          <Link href="/">
+            <button className="w-full bg-[#5A3F73] hover:bg-[#4A3362] text-white py-5 rounded-3xl font-black text-base transition-all shadow-xl">
+              Volver a la tienda 🌸
+            </button>
+          </Link>
+        </motion.div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#3D2852] pt-32 pb-20 px-6">
@@ -29,27 +186,26 @@ export default function Checkout() {
         </Link>
         
         <div className="flex flex-col lg:flex-row gap-16">
-          {/* Resumen de Compra - 1 Single Page */}
+          {/* Columna izquierda */}
           <div className="flex-1 space-y-10">
             <h1 className="text-4xl font-serif font-bold text-[#E6E6E6] mb-8 tracking-tight">FINALIZAR COMPRA</h1>
             
-            {/* Delivery Info */}
+            {/* Datos de Entrega */}
             <div className="bg-[#2A1B38]/60 backdrop-blur-3xl p-10 rounded-[3rem] shadow-2xl border border-[#5A3F73]/30 space-y-8">
                <h3 className="text-xl font-bold text-[#5A3F73] flex items-center gap-3">
                  <User className="w-6 h-6" /> DATOS DE ENTREGA
                </h3>
                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                 <input className="w-full bg-[#3D2852]/50 p-5 rounded-2xl border border-[#5A3F73]/20 outline-none focus:border-[#5A3F73] text-[#E6E6E6] font-medium placeholder:text-[#E6E6E6]/30" placeholder="Nombre de quien RECIBE..." />
-                 <input className="w-full bg-[#3D2852]/50 p-5 rounded-2xl border border-[#5A3F73]/20 outline-none focus:border-[#5A3F73] text-[#E6E6E6] font-medium placeholder:text-[#E6E6E6]/30" placeholder="Nombre de quien ENVÍA..." />
-                 <input className="w-full bg-[#3D2852]/50 p-5 rounded-2xl border border-[#5A3F73]/20 outline-none focus:border-[#5A3F73] text-[#E6E6E6] font-medium placeholder:text-[#E6E6E6]/30" placeholder="Celular (Para confirmaciones)..." />
-                 <input type="datetime-local" className="w-full bg-[#3D2852]/50 p-5 rounded-2xl border border-[#5A3F73]/20 outline-none focus:border-[#5A3F73] text-[#E6E6E6] font-medium placeholder:text-[#E6E6E6]/30 [color-scheme:dark]" />
-                 
-                 <input className="w-full md:col-span-2 bg-[#3D2852]/50 p-5 rounded-2xl border border-[#5A3F73]/20 outline-none focus:border-[#5A3F73] text-[#E6E6E6] font-medium placeholder:text-[#E6E6E6]/30" placeholder="Dirección exacta (Ciudadela, Manzana, Villa)..." />
+                 <input ref={receiverNameRef} className="w-full bg-[#3D2852]/50 p-5 rounded-2xl border border-[#5A3F73]/20 outline-none focus:border-[#5A3F73] text-[#E6E6E6] font-medium placeholder:text-[#E6E6E6]/30" placeholder="Nombre de quien RECIBE *" />
+                 <input ref={senderNameRef} className="w-full bg-[#3D2852]/50 p-5 rounded-2xl border border-[#5A3F73]/20 outline-none focus:border-[#5A3F73] text-[#E6E6E6] font-medium placeholder:text-[#E6E6E6]/30" placeholder="Nombre de quien ENVÍA *" />
+                 <input ref={phoneRef} type="tel" className="w-full bg-[#3D2852]/50 p-5 rounded-2xl border border-[#5A3F73]/20 outline-none focus:border-[#5A3F73] text-[#E6E6E6] font-medium placeholder:text-[#E6E6E6]/30" placeholder="Celular (Para confirmaciones) *" />
+                 <input ref={dateTimeRef} type="datetime-local" className="w-full bg-[#3D2852]/50 p-5 rounded-2xl border border-[#5A3F73]/20 outline-none focus:border-[#5A3F73] text-[#E6E6E6] font-medium [color-scheme:dark]" />
+                 <input ref={addressRef} className="w-full md:col-span-2 bg-[#3D2852]/50 p-5 rounded-2xl border border-[#5A3F73]/20 outline-none focus:border-[#5A3F73] text-[#E6E6E6] font-medium placeholder:text-[#E6E6E6]/30" placeholder="Dirección exacta (Ciudadela, Manzana, Villa)..." />
                </div>
-               <textarea className="w-full bg-[#3D2852]/50 p-5 rounded-2xl border border-[#5A3F73]/20 outline-none focus:border-[#5A3F73] text-[#E6E6E6] font-medium h-32 placeholder:text-[#E6E6E6]/30" placeholder="Mensaje para la tarjeta (Opcional)..."></textarea>
+               <textarea ref={cardMessageRef} className="w-full bg-[#3D2852]/50 p-5 rounded-2xl border border-[#5A3F73]/20 outline-none focus:border-[#5A3F73] text-[#E6E6E6] font-medium h-32 placeholder:text-[#E6E6E6]/30" placeholder="Mensaje para la tarjeta (Opcional)..."></textarea>
             </div>
 
-            {/* Payment Sim */}
+            {/* Método de Pago */}
             <div className="bg-[#2A1B38]/60 backdrop-blur-3xl p-10 rounded-[3rem] shadow-2xl border border-[#5A3F73]/30 space-y-8">
                <h3 className="text-xl font-bold text-[#5A3F73] flex items-center gap-3">
                  <CreditCard className="w-6 h-6" /> MÉTODO DE PAGO
@@ -82,6 +238,25 @@ export default function Checkout() {
                      exit={{ opacity: 0, height: 0, marginTop: 0 }}
                      className="overflow-hidden"
                    >
+                     <div className="bg-[#3D2852]/30 border border-dashed border-[#5A3F73] rounded-2xl p-8">
+                       <p className="text-[#E6E6E6]/80 text-sm font-bold mb-4">📌 Datos para la transferencia:</p>
+                       <div className="space-y-2 text-sm text-[#E6E6E6]/70">
+                         <p><span className="font-bold text-[#E6E6E6]/90">Banco:</span> Banco del Pichincha</p>
+                         <p><span className="font-bold text-[#E6E6E6]/90">Cuenta:</span> 2205748975</p>
+                         <p><span className="font-bold text-[#E6E6E6]/90">Tipo:</span> Corriente</p>
+                         <p><span className="font-bold text-[#E6E6E6]/90">Titular:</span> DIFIORI</p>
+                       </div>
+                       <p className="text-[#E6E6E6]/40 text-xs mt-4">Envía el comprobante al WhatsApp después de confirmar.</p>
+                     </div>
+                   </motion.div>
+                 )}
+                 {paymentMethod === "Tarjeta" && (
+                   <motion.div
+                     initial={{ opacity: 0, height: 0, marginTop: 0 }}
+                     animate={{ opacity: 1, height: "auto", marginTop: 24 }}
+                     exit={{ opacity: 0, height: 0, marginTop: 0 }}
+                     className="overflow-hidden"
+                   >
                      <div className="bg-[#3D2852]/30 border border-dashed border-[#5A3F73] rounded-2xl p-8 flex flex-col items-center justify-center cursor-pointer hover:bg-[#3D2852]/50 transition-colors group relative">
                        <Upload className="w-8 h-8 text-[#5A3F73] mb-3 group-hover:scale-110 transition-transform" />
                        <span className="text-[#E6E6E6]/80 text-sm font-bold mb-1">Cargar comprobante</span>
@@ -94,6 +269,7 @@ export default function Checkout() {
             </div>
           </div>
 
+          {/* Sidebar - Resumen */}
           <aside className="lg:w-[400px]">
              <div className="bg-[#2A1B38]/80 backdrop-blur-3xl p-10 rounded-[3rem] shadow-2xl border-2 border-[#5A3F73]/40 sticky top-32">
                 <h3 className="text-2xl font-serif font-bold text-[#E6E6E6] mb-8 flex items-center gap-3 underline decoration-[#5A3F73] decoration-4">
@@ -119,47 +295,107 @@ export default function Checkout() {
                   )}
                 </div>
 
-                <div className="mb-6 relative bg-[#3D2852]/20 p-5 rounded-2xl border border-[#5A3F73]/20">
-                   <label className="text-[10px] uppercase font-bold text-[#E6E6E6]/60 tracking-widest block mb-3">Zona de Entrega</label>
-                   <div className="relative">
-                     <select 
-                       value={sector.name}
-                       onChange={(e) => setSector(SECTORS.find(s => s.name === e.target.value) || SECTORS[0])}
-                       className="w-full bg-[#5A3F73]/20 p-4 rounded-xl border border-[#5A3F73]/30 outline-none focus:border-[#5A3F73] text-[#E6E6E6] text-sm font-bold cursor-pointer appearance-none"
-                     >
-                       <option value="" disabled className="bg-[#2A1B38] text-white">Selecciona sector...</option>
-                       {SECTORS.map(s => (
-                         <option key={s.name} value={s.name} className="bg-[#2A1B38] text-white">
-                           {s.name} {s.price > 0 ? `(+$${s.price.toFixed(2)})` : '(Gratis)'}
-                         </option>
-                       ))}
-                     </select>
-                     <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none">
-                       <ChevronLeft className="w-4 h-4 text-[#E6E6E6]/50 -rotate-90" />
-                     </div>
-                   </div>
-                </div>
+                 <div className="mb-6 relative bg-[#3D2852]/20 p-5 rounded-2xl border border-[#5A3F73]/20">
+                    <label className="text-[10px] uppercase font-bold text-[#E6E6E6]/60 tracking-widest block mb-3">Zona de Entrega</label>
+                    <div className="relative">
+                      <select 
+                        value={sector.name}
+                        onChange={(e) => setSector(SECTORS.find(s => s.name === e.target.value) || SECTORS[0])}
+                        className="w-full bg-[#5A3F73]/20 p-4 rounded-xl border border-[#5A3F73]/30 outline-none focus:border-[#5A3F73] text-[#E6E6E6] text-sm font-bold cursor-pointer appearance-none"
+                      >
+                        {SECTORS.map(s => (
+                          <option key={s.name} value={s.name} className="bg-[#2A1B38] text-white">
+                            {s.name} {s.price > 0 ? `(+$${s.price.toFixed(2)})` : '(Gratis)'}
+                          </option>
+                        ))}
+                      </select>
+                      <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none">
+                        <ChevronLeft className="w-4 h-4 text-[#E6E6E6]/50 -rotate-90" />
+                      </div>
+                    </div>
+                 </div>
 
-                <div className="space-y-4 pt-6 border-t border-[#5A3F73]/20">
-                  <div className="flex justify-between text-[#E6E6E6]/40 font-medium">
-                    <span>Subtotal</span>
-                    <span>${cartTotal.toFixed(2)}</span>
-                  </div>
-                  <div className="flex justify-between text-[#E6E6E6]/40 font-medium">
-                    <span className="truncate max-w-[200px]">Envío ({sector.name.split(" ")[0]})</span>
-                    <span className="text-[#5A3F73]">{sector.price === 0 ? "GRATIS" : `+$${sector.price.toFixed(2)}`}</span>
-                  </div>
-                  <div className="flex justify-between text-2xl font-black text-[#E6E6E6] pt-4">
-                    <span className="font-serif">TOTAL</span>
-                    <span className="text-[#5A3F73]">${finalTotal.toFixed(2)}</span>
-                  </div>
-                </div>
+                <div className="mb-6 bg-[#3D2852]/20 p-5 rounded-2xl border border-[#5A3F73]/20">
+                    <label className="text-[10px] uppercase font-bold text-[#E6E6E6]/60 tracking-widest block mb-3">¿Tienes un cupón?</label>
+                    <div className="flex gap-2">
+                       <input 
+                         type="text"
+                         value={couponCode}
+                         onChange={(e) => setCouponCode(e.target.value)}
+                         placeholder="CÓDIGO"
+                         disabled={!!appliedCoupon}
+                         className="flex-1 bg-[#5A3F73]/20 p-3 rounded-xl border border-[#5A3F73]/30 outline-none focus:border-[#5A3F73] text-[#E6E6E6] text-xs font-bold uppercase"
+                       />
+                       {appliedCoupon ? (
+                         <button 
+                           onClick={() => { setAppliedCoupon(null); setCouponCode(""); }}
+                           className="px-4 py-2 bg-red-500/20 text-red-400 rounded-xl border border-red-500/30 text-xs font-bold"
+                         >
+                           QUITAR
+                         </button>
+                       ) : (
+                         <button 
+                           onClick={handleValidateCoupon}
+                           disabled={isValidatingCoupon || !couponCode}
+                           className="px-4 py-2 bg-[#5A3F73] text-white rounded-xl font-bold text-xs disabled:opacity-50"
+                         >
+                           {isValidatingCoupon ? "..." : "APLICAR"}
+                         </button>
+                       )}
+                    </div>
+                    {appliedCoupon && (
+                      <p className="text-green-400 text-[10px] font-bold mt-2 uppercase">✓ Cupón aplicado con éxito</p>
+                    )}
+                 </div>
+
+                 <div className="space-y-4 pt-6 border-t border-[#5A3F73]/20">
+                   <div className="flex justify-between text-[#E6E6E6]/40 font-medium text-sm">
+                     <span>Subtotal</span>
+                     <span>${cartSubtotal.toFixed(2)}</span>
+                   </div>
+                   <div className="flex justify-between text-[#E6E6E6]/40 font-medium text-sm">
+                     <span className="truncate max-w-[200px]">Envío ({sector.name.split(" ")[0]})</span>
+                     <span className="text-[#5A3F73]">{sector.price === 0 ? "GRATIS" : `+$${sector.price.toFixed(2)}`}</span>
+                   </div>
+                   {discountAmount > 0 && (
+                     <div className="flex justify-between text-green-400 font-bold text-sm">
+                       <span>Descuento {appliedCoupon?.type === "PERCENTAGE" ? `(${appliedCoupon.percent_value * 100}%)` : ""}</span>
+                       <span>-${discountAmount.toFixed(2)}</span>
+                     </div>
+                   )}
+                   <div className="flex justify-between text-2xl font-black text-[#E6E6E6] pt-4 border-t border-[#5A3F73]/10">
+                     <span className="font-serif">TOTAL</span>
+                     <span className="text-[#5A3F73]">${finalTotal.toFixed(2)}</span>
+                   </div>
+                 </div>
+
+                {/* Error message */}
+                <AnimatePresence>
+                  {errorMsg && (
+                    <motion.p
+                      initial={{ opacity: 0, y: -10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0 }}
+                      className="mt-6 text-red-400 text-xs text-center font-bold bg-red-500/10 border border-red-500/20 rounded-2xl p-4"
+                    >
+                      {errorMsg}
+                    </motion.p>
+                  )}
+                </AnimatePresence>
 
                 <button 
-                  disabled={items.length === 0}
-                  className="w-full bg-[#5A3F73] hover:bg-[#4A3362] text-white py-6 rounded-3xl font-black text-lg transition-all shadow-xl shadow-[#2A1B38] mt-10 active:scale-95 border border-[#E6E6E6]/10 disabled:opacity-50 disabled:cursor-not-allowed"
+                  onClick={handleConfirmOrder}
+                  disabled={items.length === 0 || orderStatus === "loading"}
+                  className="w-full bg-[#5A3F73] hover:bg-[#4A3362] text-white py-6 rounded-3xl font-black text-lg transition-all shadow-xl shadow-[#2A1B38] mt-10 active:scale-95 border border-[#E6E6E6]/10 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3"
                 >
-                  CONFIRMAR ORDEN 🌸
+                  {orderStatus === "loading" ? (
+                    <>
+                      <Loader2 className="w-5 h-5 animate-spin" />
+                      Procesando...
+                    </>
+                  ) : (
+                    "CONFIRMAR ORDEN 🌸"
+                  )}
                 </button>
                 <p className="text-center text-[10px] text-[#E6E6E6]/20 mt-6 flex items-center justify-center gap-2 font-bold uppercase tracking-widest">
                   <Truck className="w-3 h-3" /> Entrega hoy garantizada

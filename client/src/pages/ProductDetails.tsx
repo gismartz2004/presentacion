@@ -1,14 +1,29 @@
 import React, { useState } from "react";
 import { useRoute } from "wouter";
-import { INITIAL_PRODUCTS } from "@/data/mock";
 import { ShoppingBag, MessageSquare, Truck, ShieldCheck, Clock, Heart } from "lucide-react";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
+import { useProducts } from "@/hooks/useProducts";
 
 export default function ProductDetails() {
   const [match, params] = useRoute("/product/:id");
-  const product = INITIAL_PRODUCTS.find(p => p.id === params?.id);
-  const [selectedImage, setSelectedImage] = useState(product?.image);
+  const { data: allProducts = [], isLoading } = useProducts();
+  
+  const product = allProducts.find(p => p.id === params?.id);
+  const [selectedImage, setSelectedImage] = useState<string | undefined>(undefined);
+
+  // Update selected image when product is loaded
+  React.useEffect(() => {
+    if (product) setSelectedImage(product.image);
+  }, [product]);
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="w-10 h-10 border-4 border-accent border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
 
   if (!product) return <div className="pt-40 text-center text-foreground font-serif text-2xl">Producto no encontrado</div>;
 

@@ -1,0 +1,295 @@
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Orden N° {{orderNumber}}</title>
+    <!-- Mantén aquí solo estilos muy básicos; luego los "inliner" -->
+    <style>
+      /* preserva para juice; no confíes en que clientes apliquen esto */
+      .wrapper { width:100%; background:#f3f6f8; padding:20px 0; } .container {
+      max-width:720px; margin:0 auto; } .card { border-radius:12px;
+      overflow:hidden; }
+    </style>
+  </head>
+  <body style="margin:0;padding:0;background:#f3f6f8;">
+    <center
+      class="wrapper"
+      style="width:100%;background:#f3f6f8;padding:20px 0;"
+    >
+      <!-- main container -->
+      <table
+        role="presentation"
+        cellpadding="0"
+        cellspacing="0"
+        border="0"
+        width="720"
+        class="container"
+        style="width:100%;max-width:720px;margin:0 auto;"
+      >
+        <tr>
+          <td align="center">
+            <!-- card -->
+            <table
+              role="presentation"
+              cellpadding="0"
+              cellspacing="0"
+              border="0"
+              width="100%"
+              class="card"
+              style="background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 10px 30px rgba(18,38,63,0.08);"
+            >
+
+              <!-- HEADER -->
+              <tr>
+                <td
+                  style="padding:18px 18px;background:linear-gradient(90deg,#3c697b,#c1a65c);color:#fff;"
+                >
+                  <table
+                    role="presentation"
+                    width="100%"
+                    cellpadding="0"
+                    cellspacing="0"
+                  >
+                    <tr>
+                      <td style="vertical-align:middle;">
+                        <!-- logo (inline cid or external) -->
+                        <img
+                          src="../assets/favicon.ico"
+                          alt="{{companyName}}"
+                          width="56"
+                          height="56"
+                          style="display:block;border-radius:8px;border:0;max-width:56px;"
+                        />
+                      </td>
+                      <td
+                        style="text-align:right;vertical-align:middle;font-family:Arial,Helvetica,sans-serif;"
+                      >
+                        <div
+                          style="font-weight:700;font-size:16px;line-height:1;"
+                        >Orden Confirmada</div>
+                        <div
+                          style="font-size:13px;opacity:0.95;margin-top:4px;"
+                        >N° {{orderNumber}} • {{createdAt}}</div>
+                      </td>
+                    </tr>
+                  </table>
+                </td>
+              </tr>
+
+              <!-- HERO -->
+              <tr>
+                <td style="padding:20px;text-align:center;background:#fff;">
+                  <div
+                    style="font-family:Arial,Helvetica,sans-serif;color:#77472b;font-weight:700;font-size:18px;"
+                  >¡Tu pedido está en proceso!</div>
+                  <div
+                    style="margin-top:6px;color:#494949;font-size:13px;"
+                  >Hemos recibido el pago y empezamos a preparar tu orden.</div>
+                  <div style="margin-top:12px;">
+                    <span
+                      style="display:inline-block;padding:8px 14px;border-radius:999px;background:#e6f7ef;color:#0b6a35;font-weight:700;font-size:12px;"
+                    >PAGADO</span>
+                  </div>
+                </td>
+              </tr>
+
+              {{!-- {{#if isReservation}}
+            <!-- Aviso de Reserva -->
+            <tr>
+              <td style="padding:0 20px 8px 20px;background:#fff;">
+                <div style="margin:0 0 8px 0;padding:12px;border-radius:10px;background:#fff7e6;border:1px solid #ffe8bf;font-family:Arial,Helvetica,sans-serif;">
+                  <div style="font-weight:700;color:#8a6100;margin-bottom:6px;">Este pedido es una reserva</div>
+                  <div style="color:#7a5a10;font-size:13px;">Valor cobrado (reserva): <strong>{{formattedChargedAmount}}</strong></div>
+                  <div style="color:#7a5a10;font-size:13px;">Saldo pendiente al retiro/entrega: <strong>{{formattedRemainingBalance}}</strong></div>
+                </div>
+              </td>
+            </tr>
+            {{/if}} --}}
+
+              <!-- CONTENT: detalles y tabla (USAR <td> como cabecera por compat.) -->
+              <tr>
+                <td style="padding:18px;background:#ffffff;">
+                  <!-- detalles -->
+                  <table
+                    role="presentation"
+                    width="100%"
+                    cellpadding="0"
+                    cellspacing="0"
+                    style="border-collapse:collapse;"
+                  >
+                    <tr>
+                      <td
+                        style="vertical-align:top;padding-bottom:12px;font-family:Arial,Helvetica,sans-serif;"
+                      >
+                        <strong
+                          style="color:#77472b;display:block;margin-bottom:6px;"
+                        >Detalles de la orden</strong>
+                        <div style="font-size:13px;color:#494949;">Orden:
+                          {{orderNumber}}</div>
+                        <div style="font-size:13px;color:#494949;">Pedido:
+                          {{createdAt}}</div>
+                        <div style="font-size:13px;color:#494949;">Entrega
+                          estimada:
+                          {{estimatedDelivery}}
+                          días laborables</div>
+                      </td>
+                      {{!-- <td style="text-align:right;vertical-align:top;padding-bottom:12px;font-family:Arial,Helvetica,sans-serif;">
+                      <a href="{{orderUrl}}" style="display:inline-block;padding:10px 14px;background:#3c697b;color:#fff;border-radius:8px;text-decoration:none;font-weight:700;">Ver orden</a>
+                    </td> --}}
+                    </tr>
+                  </table>
+
+                  <!-- tabla de items -->
+                  <table
+                    role="presentation"
+                    width="100%"
+                    cellpadding="0"
+                    cellspacing="0"
+                    style="border-collapse:collapse;margin-top:12px;font-family:Arial,Helvetica,sans-serif;"
+                  >
+                    <!-- HEADER ROW usando <td> para mayor compat -->
+                    <tr>
+                      <td
+                        style="padding:12px;background:#3c697b;color:#fff;font-weight:700;"
+                      >Producto</td>
+                      <td
+                        style="padding:12px;background:#3c697b;color:#fff;font-weight:700;text-align:right;width:70px;"
+                      >Cant.</td>
+                      <td
+                        style="padding:12px;background:#3c697b;color:#fff;font-weight:700;text-align:right;width:110px;"
+                      >Precio</td>
+                      <td
+                        style="padding:12px;background:#3c697b;color:#fff;font-weight:700;text-align:right;width:120px;"
+                      >Total</td>
+                    </tr>
+
+                    {{#each formattedItems}}
+                      <tr>
+                        <td
+                          style="padding:12px;border-bottom:1px solid #f1f3f5;vertical-align:middle;"
+                        >
+                          <table
+                            role="presentation"
+                            cellpadding="0"
+                            cellspacing="0"
+                            style="border-collapse:collapse;"
+                          >
+                            <tr>
+                              <td
+                                style="padding-right:10px;vertical-align:middle;"
+                              >
+                                {{#if productImage}}
+                                  <img
+                                    src="{{productImage}}"
+                                    alt="{{productName}}"
+                                    width="56"
+                                    height="56"
+                                    style="border-radius:8px;object-fit:cover;border:1px solid #eee;display:block;"
+                                  />
+                                {{/if}}
+                              </td>
+                              <td style="vertical-align:middle;">
+                                <div
+                                  style="font-weight:700;color:#494949;"
+                                >{{productName}}</div>
+                                {{#if variantName}}<div
+                                    style="color:#7c8690;font-size:12px;margin-top:4px;"
+                                  >{{variantName}}</div>{{/if}}
+                              </td>
+                            </tr>
+                          </table>
+                        </td>
+                        <td
+                          style="padding:12px;border-bottom:1px solid #f1f3f5;text-align:right;vertical-align:middle;"
+                        >{{quantity}}</td>
+                        <td
+                          style="padding:12px;border-bottom:1px solid #f1f3f5;text-align:right;vertical-align:middle;"
+                        >{{formattedPrice}}</td>
+                        <td
+                          style="padding:12px;border-bottom:1px solid #f1f3f5;text-align:right;vertical-align:middle;font-weight:700;color:#77472b;"
+                        >{{formattedTotal}}</td>
+                      </tr>
+                    {{/each}}
+
+                  </table>
+
+                  <!-- Totales -->
+                  <div
+                    style="margin-top:14px;padding:12px;border-radius:8px;background:#fbfdff;border-left:5px solid #c1a65c;"
+                  >
+                    <div
+                      style="display:flex;justify-content:space-between;font-family:Arial,Helvetica,sans-serif;color:#494949;padding:4px 0;"
+                    >
+                      <div>Subtotal: </div><div>{{formattedSubtotal}}</div>
+                    </div>
+                    <div
+                      style="display:flex;justify-content:space-between;color:#494949;padding:4px 0;"
+                    >
+                      <div>Impuestos: </div><div>{{formattedTax}}</div>
+                    </div>
+                    <div
+                      style="display:flex;justify-content:space-between;color:#494949;padding:4px 0;"
+                    >
+                      <div>Envío: </div><div>Gratis</div>
+                    </div>
+                    <div
+                      style="display:flex;justify-content:space-between;font-weight:800;color:#77472b;padding-top:8px;border-top:1px dashed rgba(0,0,0,0.04);margin-top:8px;"
+                    >
+                      <div>Total: </div><div>{{formattedTotal}}</div>
+                    </div>
+                    {{#if isReservation}}
+                      <div
+                        style="display:flex;justify-content:space-between;color:#0b6a35;padding-top:8px;border-top:1px dashed rgba(0,0,0,0.04);margin-top:8px;"
+                      >
+                        <div>Pagado: </div><div
+                          style="font-weight:700;"
+                        >{{formattedChargedAmount}}</div>
+                      </div>
+                      <div
+                        style="display:flex;justify-content:space-between;color:#a36f00;padding-top:4px;"
+                      >
+                        <div>Saldo pendiente: </div><div
+                          style="font-weight:700;"
+                        >{{formattedRemainingBalance}}</div>
+                      </div>
+                    {{/if}}
+                  </div>
+
+                  <!-- Company -->
+                  <div
+                    style="margin-top:14px;padding:12px;border-radius:8px;background:#fff;border:1px solid rgba(13,20,30,0.03);font-family:Arial,Helvetica,sans-serif;"
+                  >
+                    <strong style="color:#77472b;">{{companyName}}</strong>
+                    <div style="font-size:13px;color:#494949;margin-top:6px;">📧
+                      {{companyEmail}}
+                      {{#if companyPhone}}• 📞 {{companyPhone}}{{/if}}</div>
+                    {{#if companyAddress}}<div
+                        style="font-size:12px;color:#7c8690;margin-top:6px;"
+                      >📍 {{companyAddress}}</div>{{/if}}
+                  </div>
+
+                </td>
+              </tr>
+
+              <!-- FOOTER -->
+              <tr>
+                <td
+                  style="background:#77472b;color:#fff;padding:14px;text-align:center;"
+                >
+                  <div style="font-weight:700;">¡Gracias por elegirnos!</div>
+                  <div style="margin-top:6px;font-size:13px;">Si tienes dudas
+                    contáctanos:
+                    <a
+                      href="mailto:{{companyEmail}}"
+                      style="color:#fff;font-weight:700;text-decoration:none;"
+                    >{{companyEmail}}</a></div>
+                </td>
+              </tr>
+
+            </table>
+          </td>
+        </tr>
+      </table>
+    </center>
+  </body>
+</html>

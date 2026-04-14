@@ -1,0 +1,140 @@
+name: 🔧 API - CI/CD Docker
+
+on:
+  push:
+    branches: [master, main]
+    paths: ["api/**"]
+  workflow_dispatch:  # Permite ejecución manual desde GitHub UI
+env:
+  SERVICE_NAME: "api-perfumeria" 
+  CONTAINER_NAME: "api-prod"
+jobs:
+  deploy-api:
+    runs-on: self-hosted
+    environment: Production 
+    steps:
+      - name: 📦 Checkout
+        uses: actions/checkout@v4
+
+      - name: 📁 Setup uploads directory
+        run: |
+          UPLOADS_DIR="/root/admin-web-data/uploads"
+          echo "Configurando directorio de uploads en $UPLOADS_DIR ..."
+          
+          # Crear directorio si no existe
+          if [ ! -d "$UPLOADS_DIR" ]; then
+            echo "⚠️ Creando directorio $UPLOADS_DIR"
+            sudo mkdir -p "$UPLOADS_DIR"
+          else
+            echo "✅ Directorio encontrado"
+            echo "📊 Archivos actuales: $(ls "$UPLOADS_DIR" 2>/dev/null | wc -l)"
+          fi
+
+          echo "🔧 Ajustando permisos para escritura del contenedor..."
+          sudo chown -R 1000:1000 "$UPLOADS_DIR"
+          sudo chmod -R 777 "$UPLOADS_DIR"
+          echo "✅ Permisos configurados correctamente"
+
+      # --- NUEVO PASO PARA LA OPCIÓN A ---
+      - name: 📝 Create .env file for API
+        run: |
+          cat > ./api/.env << EOF
+          PORT=4001
+          ZONA_HORARIA="Es"
+          DATABASE_URL=${{ vars.DATABASE_URL }}
+          JWT_SECRET=${{ secrets.JWT_SECRET }}
+          
+          # Rutas
+          IMAGES_PATH=${{ vars.IMAGES_PATH }}
+          
+          # Cloudinary Configuration
+          CLOUDINARY_CLOUD_NAME=${{ secrets.CLOUDINARY_CLOUD_NAME }}
+          CLOUDINARY_API_KEY=${{ secrets.CLOUDINARY_API_KEY }}
+          CLOUDINARY_API_SECRET=${{ secrets.CLOUDINARY_API_SECRET }}
+          CLOUDINARY_UPLOAD_PRESET=${{ secrets.CLOUDINARY_UPLOAD_PRESET }}
+          
+          # CORS
+          CORS_ORIGIN=${{ vars.CORS_ORIGIN }}
+          
+          # Email (Nodemailer)
+          EMAIL_HOST=${{ vars.EMAIL_HOST }}
+          EMAIL_PORT=${{ vars.EMAIL_PORT }}
+          EMAIL_USER=${{ vars.EMAIL_USER }}
+          EMAIL_PASS=${{ secrets.EMAIL_PASS }}
+          EMAIL_FROM=${{ vars.EMAIL_FROM }}
+          
+          # Company Information
+          COMPANY_NAME=${{ vars.COMPANY_NAME }}
+          COMPANY_EMAIL=${{ vars.COMPANY_EMAIL }}
+          COMPANY_PHONE=${{ vars.COMPANY_PHONE }}
+          COMPANY_ADDRESS=${{ vars.COMPANY_ADDRESS }}
+          EOF
+
+      - name: 🏗️ Build New Image
+        run: |
+          echo "Construyendo nueva imagen..."
+          docker compose build api-perfumeria
+          echo "✅ Imagen construida exitosamente"
+
+      - name: 🚀 Start New Container
+        run: |
+          echo "Levantando nuevo contenedor..."
+          docker compose up -d api-perfumeria
+          echo "⏳ Esperando que el servicio esté listo..."
+          sleep 20
+
+      - name: 🏥 Health Check
+        run: |
+          echo "Verificando salud del contenedor..."
+          max_attempts=15
+          attempt=0
+          
+          while [ $attempt -lt $max_attempts ]; do
+            # Verificar que el contenedor esté corriendo
+            if [ "$(docker inspect -f '{{.State.Running}}' ${{ env.CONTAINER_NAME }})" = "true" ]; then
+              # Intentar health check desde dentro del contenedor
+              if docker exec ${{ env.CONTAINER_NAME }} node -e "
+                const http = require('http');
+                http.get('http://localhost:4001/api/health', (res) => {
+                  process.exit(res.statusCode === 200 ? 0 : 1);
+                }).on('error', () => process.exit(1));
+              " 2>/dev/null; then
+                echo "✅ API respondiendo correctamente"
+                docker exec ${{ env.CONTAINER_NAME }} node -e "
+                  const http = require('http');
+                  http.get('http://localhost:4001/api/health', (res) => {
+                    let data = '';
+                    res.on('data', chunk => data += chunk);
+                    res.on('end', () => console.log(data));
+                  });
+                "
+                break
+              fi
+            else
+              echo "❌ Contenedor no está corriendo"
+              docker logs ${{ env.CONTAINER_NAME }} --tail 50
+              exit 1
+            fi
+            
+            attempt=$((attempt + 1))
+            echo "Intento $attempt/$max_attempts - esperando..."
+            sleep 5
+          done
+          
+          if [ $attempt -eq $max_attempts ]; then
+            echo "❌ Health check falló después de $max_attempts intentos"
+            echo "📋 Logs del contenedor:"
+            docker logs ${{ env.CONTAINER_NAME }} --tail 100
+            echo ""
+            echo "🔍 Estado del contenedor:"
+            docker inspect ${{ env.CONTAINER_NAME }} | grep -A 10 "State"
+            exit 1
+          fi
+
+      - name: ✅ Deployment Complete
+        run: |
+          echo "🎉 Despliegue completado exitosamente"
+          docker ps --filter "name=api-prod"
+
+      - name: 🧹 Clean images
+        run: docker image prune -f

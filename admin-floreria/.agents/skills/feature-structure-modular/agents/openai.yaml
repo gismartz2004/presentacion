@@ -1,0 +1,4 @@
+interface_version: 1
+display_name: Feature Structure Modular
+short_description: Organiza carpetas por feature y opcion con page, components y services.
+default_prompt: Estructura este cambio usando feature modular con opcion por carpeta y responsabilidades claras.

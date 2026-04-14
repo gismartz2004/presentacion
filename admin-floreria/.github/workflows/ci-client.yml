@@ -1,0 +1,86 @@
+name: 🎨 Client - CI/CD Docker
+
+on:
+  push:
+    branches: [master, main]
+    paths: ["client/**"]
+  pull_request:
+    branches: [master, main]
+    paths: ["client/**"]
+  workflow_dispatch:  # Permite ejecución manual desde GitHub UI
+
+jobs:
+  # --- FASE DE CI (Integración Continua) ---
+  build-validation:
+    name: 🧪 CI - Build & Lint
+    runs-on: ubuntu-latest # Esto corre en los servidores de GitHub (gratis) para no cargar tu VPS
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: ⚙️ Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: "npm"
+          cache-dependency-path: client/package-lock.json
+
+      - name: 📥 Install Dependencies
+        working-directory: ./client
+        run: npm ci
+
+      - name: 🔍 Type Check (TypeScript)
+        working-directory: ./client
+        run: npx tsc --noEmit # Aquí es donde saltarían los errores que viste
+
+  # --- FASE DE CD (Despliegue Continuo) ---
+  deploy-client:
+    name: 🚀 CD - Deploy to VPS
+    needs: build-validation
+    runs-on: self-hosted
+    environment: Production
+    steps:
+      - name: 📦 Checkout
+        uses: actions/checkout@v4
+
+      - name: 📝 Create .env file
+        run: |
+          cat > ./client/.env << EOF
+          VITE_API_URL=${{ vars.VITE_API_URL }}
+          VITE_URL_IMG=${{ vars.VITE_URL_IMG }}
+          VITE_BACKEND_URL=${{ vars.VITE_BACKEND_URL }}
+          VITE_LOYALTY_API_URL=${{ vars.VITE_LOYALTY_API_URL }}
+          EOF
+          echo "✅ Variables de entorno configuradas:"
+          cat ./client/.env
+
+      - name: 🏗️ Build New Image
+        run: |
+          echo "Construyendo nueva imagen con variables de entorno..."
+          docker compose build --no-cache client-perfumeria
+          echo "✅ Imagen construida exitosamente"
+
+      - name: 🚀 Start New Container
+        run: |
+          echo "Levantando nuevo contenedor..."
+          docker compose up -d client-perfumeria
+          echo "⏳ Esperando que el servicio esté listo..."
+          sleep 10
+
+      - name: 🏥 Health Check
+        run: |
+          echo "Verificando salud del contenedor..."
+          if [ $(docker inspect -f '{{.State.Running}}' client-prod) = "true" ]; then
+            echo "✅ Client desplegado correctamente"
+          else
+            echo "❌ Error en el despliegue"
+            docker logs client-prod --tail 50
+            exit 1
+          fi
+
+      - name: ✅ Deployment Complete
+        run: |
+          echo "🎉 Despliegue completado exitosamente"
+          docker ps --filter "name=client-prod"
+
+      - name: 🧹 Cleanup
+        run: docker image prune -f

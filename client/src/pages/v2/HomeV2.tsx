@@ -2,13 +2,17 @@ import React from "react";
 import { motion } from "framer-motion";
 import { NavbarV2 } from "@/components/v2/NavbarV2";
 import { ProductCardV2 } from "@/components/v2/ProductCardV2";
-import { INITIAL_PRODUCTS, CATEGORIES } from "@/data/mock";
 import { ArrowRight, Instagram, Facebook, Mail } from "lucide-react";
 import { Link } from "wouter";
 import { Logo } from "@/components/Logo";
+import { useProducts } from "@/hooks/useProducts";
+import { useCategories } from "@/hooks/useCategories";
 
 export default function HomeV2() {
-  const bestSellers = INITIAL_PRODUCTS.filter(p => p.isBestSeller);
+  const { data: allProducts = [], isLoading: isLoadingAll } = useProducts();
+  const { data: categories = [] } = useCategories();
+  
+  const bestSellers = allProducts.filter(p => p.isBestSeller);
 
   return (
     <div className="min-h-screen bg-[#FCFAF8] selection:bg-[#2C2C2B] selection:text-white overflow-x-hidden pt-20">
@@ -115,7 +119,7 @@ export default function HomeV2() {
           </Link>
         </div>
         <div className="flex gap-10 lg:gap-16 overflow-x-auto px-8 lg:px-16 no-scrollbar pb-8">
-          {CATEGORIES.map((cat: any, i) => (
+          {categories.map((catName: string, i: number) => (
             <motion.div 
               key={i} 
               whileHover={{ y: -8 }} 
@@ -124,9 +128,9 @@ export default function HomeV2() {
               <div className="relative w-24 h-24 lg:w-32 lg:h-32 rounded-full p-1 border border-[#E5DACD] group-hover:border-[#2C2C2B] transition-colors duration-500">
                 <div className="w-full h-full rounded-full overflow-hidden border-2 border-white">
                   <img 
-                    src={cat.image} 
+                    src={`https://images.unsplash.com/photo-1526047932273-341f2a7631f9?q=80&w=200&auto=format&fit=crop`} 
                     className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" 
-                    alt={cat.name}
+                    alt={catName}
                   />
                 </div>
                 {/* Visual indicator ring */}
@@ -142,7 +146,7 @@ export default function HomeV2() {
                 </svg>
               </div>
               <span className="text-[10px] font-black uppercase tracking-[0.2em] text-[#2C2C2B] text-center w-full group-hover:text-[#A8988A] transition-colors">
-                {cat.name}
+                {catName}
               </span>
             </motion.div>
           ))}
@@ -158,9 +162,19 @@ export default function HomeV2() {
           <h2 className="text-4xl lg:text-6xl font-serif text-[#2C2C2B]">La Selección del Editor</h2>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-12 lg:gap-10">
-          {INITIAL_PRODUCTS.map((product) => (
-            <ProductCardV2 key={product.id} product={product} />
-          ))}
+          {isLoadingAll ? (
+             Array(4).fill(0).map((_, i) => (
+               <div key={i} className="aspect-[2/3] bg-[#F3F0EC] animate-pulse" />
+             ))
+          ) : bestSellers.length > 0 ? (
+            bestSellers.map((product) => (
+              <ProductCardV2 key={product.id} product={product} />
+            ))
+          ) : (
+            <div className="col-span-full py-10 text-center text-[#2C2C2B]/40 font-serif italic">
+              No hay selecciones destacadas disponibles.
+            </div>
+          )}
         </div>
         <div className="mt-24 text-center">
             <button className="text-[#2C2C2B] text-[10px] font-black uppercase tracking-[0.6em] hover:text-[#A8988A] transition-all relative after:content-[''] after:absolute after:w-full after:h-[1px] after:bg-[#2C2C2B] after:bottom-[-8px] after:left-0 hover:after:bg-[#A8988A]">

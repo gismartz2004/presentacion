@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowRight, MessageSquare } from "lucide-react";
+import { ArrowRight, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useCMS } from "@/hooks/useCMS";
 
-const slides = [
+const DEFAULT_SLIDES = [
   {
     image: "/assets/banner4.png",
     title: "Regalos que trascienden",
@@ -15,30 +16,44 @@ const slides = [
     title: "Hoy haces su día especial",
     subtitle: "Entrega en Guayaquil en horas",
     cta: "Comprar ahora",
-  },
-  {
-    image: "https://images.unsplash.com/photo-1582794543139-8ac9cb0f7b11?q=80&w=2000&auto=format&fit=crop",
-    title: "Tu emoción, nuestra pasión",
-    subtitle: "Arreglos únicos que hablan por ti",
-    cta: "Ver catálogo",
-  },
-  {
-    image: "/assets/banner4.png",
-    title: "Momentos inolvidables",
-    subtitle: "Calidad de exportación en cada detalle",
-    cta: "Más vendidos",
   }
 ];
 
 export function Banner() {
   const [selectedIndex, setSelectedIndex] = useState(0);
+  const { data: cms, isLoading } = useCMS();
+
+  // Mapear los datos del CMS al formato de slides
+  const slides = React.useMemo(() => {
+    if (!cms) return DEFAULT_SLIDES;
+    
+    const imageUrls = Array.isArray(cms.images) ? cms.images : [];
+    
+    if (imageUrls.length === 0) return DEFAULT_SLIDES;
+
+    return imageUrls.map((img: string) => ({
+      image: img,
+      title: cms.title || "DIFIORI",
+      subtitle: cms.description || "Diseñando emociones",
+      cta: "Comprar ahora"
+    }));
+  }, [cms]);
 
   useEffect(() => {
+    if (slides.length <= 1) return;
     const timer = setInterval(() => {
       setSelectedIndex((prev) => (prev + 1) % slides.length);
     }, 8000);
     return () => clearInterval(timer);
-  }, []);
+  }, [slides]);
+
+  if (isLoading) {
+    return (
+      <div className="h-[85vh] md:h-screen bg-[#111] flex items-center justify-center">
+        <Loader2 className="w-10 h-10 animate-spin text-white/20" />
+      </div>
+    );
+  }
 
   return (
     <div className="relative h-[85vh] md:h-screen bg-[#111] overflow-hidden group/banner">
@@ -53,14 +68,25 @@ export function Banner() {
             transition={{ duration: 1.8, ease: "easeInOut" }}
             className="absolute inset-0 w-full h-full"
           >
-            <motion.img 
-              src={slides[selectedIndex].image} 
-              alt={`Florería DIFIORI - ${slides[selectedIndex].title}`}
-              initial={{ scale: 1.15 }}
-              animate={{ scale: 1 }}
-              transition={{ duration: 25, ease: "linear" }}
-              className="w-full h-full object-cover object-center contrast-[1.15] saturate-[1.1] brightness-[0.85]"
-            />
+            {cms?.backgroundType === "video" && cms?.videoUrl ? (
+              <video 
+                src={cms.videoUrl} 
+                autoPlay 
+                muted 
+                loop 
+                playsInline
+                className="w-full h-full object-cover grayscale-[0.2] brightness-[0.7]"
+              />
+            ) : (
+              <motion.img 
+                src={slides[selectedIndex].image} 
+                alt={`Florería DIFIORI - ${slides[selectedIndex].title}`}
+                initial={{ scale: 1.15 }}
+                animate={{ scale: 1 }}
+                transition={{ duration: 25, ease: "linear" }}
+                className="w-full h-full object-cover object-center contrast-[1.15] saturate-[1.1] brightness-[0.85]"
+              />
+            )}
             {/* Base Overlay to guarantee text readability */}
             <div className="absolute inset-0 bg-black/30" />
             <div className="absolute inset-0 bg-gradient-to-t from-[#111111]/95 via-[#111111]/30 to-transparent opacity-90" />

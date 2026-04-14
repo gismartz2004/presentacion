@@ -1,22 +1,49 @@
-import React, { useState } from "react";
-import { motion, Variants } from "framer-motion";
+import React, { useState, useEffect } from "react";
+import { motion, Variants, AnimatePresence } from "framer-motion";
 import { ArrowRight, Sparkles, Star, Instagram, Facebook, Mail, MessageSquare, Phone } from "lucide-react";
 import { Link } from "wouter";
 import { Banner } from "@/components/Banner";
 import { CategorySidebar } from "@/components/CategorySidebar";
+import { cn } from "@/lib/utils";
 import { ProductCard } from "@/components/ProductCard";
 import { Logo } from "@/components/Logo";
-import { TESTIMONIALS, COMPANY_INFO, FAQS, CARE_GUIDE, CONTACT_DETAILS, INITIAL_PRODUCTS } from "@/data/mock";
+import { FAQS, CARE_GUIDE, INITIAL_PRODUCTS } from "@/data/mock";
+import { useProducts, useFeaturedProducts } from "@/hooks/useProducts";
+import { useCompany } from "@/hooks/useCompany";
+import { useReviews, useCreateReview } from "@/hooks/useReviews";
 
 export default function Home() {
+  const { data: dbReviews = [], isLoading: isLoadingReviews } = useReviews();
+  const createReviewMutation = useCreateReview();
+  
+  const [newReview, setNewReview] = useState({ name: "", content: "", stars: 5 });
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
+  const [showForm, setShowForm] = useState(false);
 
-  const bestSellers = INITIAL_PRODUCTS.filter(p => p.isBestSeller);
+  const handleAddReview = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newReview.name || !newReview.content) return;
+
+    try {
+      await createReviewMutation.mutateAsync(newReview);
+      setNewReview({ name: "", content: "", stars: 5 });
+      setShowForm(false);
+    } catch (err) {
+      console.error("Error al enviar la reseña:", err);
+    }
+  };
+
+  // Productos y Datos desde la API real
+  const { data: allProducts = [], isLoading: isLoadingAll } = useProducts();
+  const { data: featuredProducts = [], isLoading: isLoadingFeatured } = useFeaturedProducts();
+  const { data: company } = useCompany();
+
+  const bestSellers = featuredProducts.length > 0 ? featuredProducts : allProducts.filter(p => p.isBestSeller);
   const catalogProducts = activeCategory === "Más Vendidos"
-    ? INITIAL_PRODUCTS.filter(p => p.isBestSeller)
-    : activeCategory 
-      ? INITIAL_PRODUCTS.filter(p => p.category === activeCategory)
-      : INITIAL_PRODUCTS;
+    ? allProducts.filter(p => p.isBestSeller)
+    : activeCategory
+      ? allProducts.filter(p => p.category === activeCategory)
+      : allProducts;
 
   const sectionVariants: Variants = {
     hidden: { opacity: 0, y: 50 },
@@ -68,9 +95,22 @@ export default function Home() {
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-8">
-              {catalogProducts.map((product) => (
-                <ProductCard key={product.id} product={product} />
-              ))}
+              {isLoadingAll ? (
+                // Skeleton loading state (minimal)
+                Array(6).fill(0).map((_, i) => (
+                  <div key={i} className="h-80 bg-primary/5 animate-pulse rounded-[3rem]" />
+                ))
+              ) : catalogProducts.length > 0 ? (
+                catalogProducts.map((product) => (
+                  <ProductCard key={product.id} product={product} />
+                ))
+              ) : (
+                <div className="col-span-full py-20 text-center">
+                  <p className="text-foreground/40 font-serif italic text-xl">
+                    No se encontraron productos en esta categoría.
+                  </p>
+                </div>
+              )}
             </div>
             
             <div className="mt-24 text-center">
@@ -96,28 +136,98 @@ export default function Home() {
               <h2 className="text-4xl md:text-6xl font-serif text-foreground mb-4 italic">Lo que dicen de nosotros</h2>
               <p className="text-foreground/50 italic font-serif text-xl">Tu satisfacción es nuestra mayor recompensa.</p>
            </div>
-           <div className="grid grid-cols-1 md:grid-cols-2 gap-12 max-w-6xl mx-auto">
-              {TESTIMONIALS.map((review, i) => (
+            <div className="text-center mb-10">
+               <button 
+                 onClick={() => setShowForm(!showForm)}
+                 className="inline-flex items-center gap-3 bg-accent text-white px-8 py-4 rounded-full font-black text-[10px] uppercase tracking-widest hover:scale-105 transition-all shadow-xl"
+               >
+                 {showForm ? "Cerrar Formulario" : "Escribir una reseña"}
+               </button>
+            </div>
+
+            <AnimatePresence>
+              {showForm && (
                 <motion.div 
-                  key={i}
-                  whileHover={{ y: -8 }}
-                  transition={{ duration: 0.5 }}
-                  className="bg-white p-12 rounded-[3rem] shadow-xl border border-primary/10 relative group"
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: "auto" }}
+                  exit={{ opacity: 0, height: 0 }}
+                  className="max-w-xl mx-auto mb-20 overflow-hidden"
                 >
-                   <div className="flex gap-1 mb-6 opacity-40 group-hover:opacity-100 transition-opacity duration-700">
-                      {[...Array(review.stars)].map((_, s) => <Star key={s} className="w-5 h-5 fill-accent text-accent" />)}
-                   </div>
-                   <p className="text-foreground/80 text-lg leading-relaxed mb-8 italic font-serif">"{review.content}"</p>
-                   <div className="flex items-center gap-4">
-                      <div className="w-12 h-12 bg-primary/20 rounded-full flex items-center justify-center font-bold text-accent transition-transform duration-700 group-hover:rotate-[360deg]">{review.name[0]}</div>
-                      <div>
-                         <h4 className="font-black uppercase tracking-widest text-[10px] text-foreground">{review.name}</h4>
-                         <span className="text-[10px] text-foreground/40 font-bold uppercase">{review.role}</span>
-                      </div>
-                   </div>
+                  <form onSubmit={handleAddReview} className="bg-white p-8 rounded-[3rem] shadow-2xl border border-primary/20 space-y-6">
+                    <div className="flex justify-center gap-2 mb-4">
+                      {[1, 2, 3, 4, 5].map((star) => (
+                        <button
+                          key={star}
+                          type="button"
+                          onClick={() => setNewReview({ ...newReview, stars: star })}
+                          className="transition-transform hover:scale-125"
+                        >
+                          <Star 
+                            className={cn(
+                              "w-8 h-8",
+                              star <= newReview.stars ? "fill-accent text-accent" : "text-primary/20"
+                            )} 
+                          />
+                        </button>
+                      ))}
+                    </div>
+                    <input 
+                      placeholder="Tu nombre"
+                      value={newReview.name}
+                      onChange={(e) => setNewReview({ ...newReview, name: e.target.value })}
+                      className="w-full bg-primary/5 p-4 rounded-2xl border border-primary/10 outline-none focus:border-accent text-foreground font-bold placeholder:text-foreground/20"
+                      required
+                    />
+                    <textarea 
+                      placeholder="Cuéntanos tu experiencia..."
+                      value={newReview.content}
+                      onChange={(e) => setNewReview({ ...newReview, content: e.target.value })}
+                      className="w-full bg-primary/5 p-4 rounded-2xl border border-primary/10 outline-none focus:border-accent text-foreground font-medium h-32 placeholder:text-foreground/20"
+                      required
+                    />
+                    <button 
+                      type="submit"
+                      className="w-full bg-foreground text-white py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-accent transition-colors shadow-lg"
+                    >
+                      Publicar Reseña
+                    </button>
+                  </form>
                 </motion.div>
-              ))}
-           </div>
+              )}
+            </AnimatePresence>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-12 max-w-6xl mx-auto">
+               {isLoadingReviews ? (
+                  <div className="col-span-full text-center py-10 opacity-30">Cargando experiencias...</div>
+               ) : dbReviews.length > 0 ? (
+                 dbReviews.map((review, i) => (
+                   <motion.div 
+                     key={review.id || i}
+                     initial={{ opacity: 0, y: 20 }}
+                     whileInView={{ opacity: 1, y: 0 }}
+                     whileHover={{ y: -8 }}
+                     transition={{ duration: 0.5 }}
+                     className="bg-white p-12 rounded-[3rem] shadow-xl border border-primary/10 relative group"
+                   >
+                      <div className="flex gap-1 mb-6 opacity-40 group-hover:opacity-100 transition-opacity duration-700">
+                         {[...Array(review.stars)].map((_, s) => <Star key={s} className="w-5 h-5 fill-accent text-accent" />)}
+                      </div>
+                      <p className="text-foreground/80 text-lg leading-relaxed mb-8 italic font-serif">"{review.content}"</p>
+                      <div className="flex items-center gap-4">
+                         <div className="w-12 h-12 bg-primary/20 rounded-full flex items-center justify-center font-bold text-accent transition-transform duration-700 group-hover:rotate-[360deg]">{review.name[0]}</div>
+                         <div>
+                            <h4 className="font-black uppercase tracking-widest text-[10px] text-foreground">{review.name}</h4>
+                            <span className="text-[10px] text-foreground/40 font-bold uppercase">{review.role || "Cliente"}</span>
+                         </div>
+                      </div>
+                   </motion.div>
+                 ))
+               ) : (
+                  <div className="col-span-full text-center py-20 italic font-serif text-foreground/40 text-xl">
+                    Aún no hay reseñas. ¡Sé el primero en compartir tu experiencia!
+                  </div>
+               )}
+            </div>
         </motion.section>
 
       </div>
@@ -172,21 +282,21 @@ export default function Home() {
                        <div className="p-4 bg-accent/10 rounded-2xl group-hover:bg-accent transition-colors duration-500"><MessageSquare className="w-4 h-4 text-accent group-hover:text-white transition-colors duration-500"/></div>
                        <div className="text-[10px] font-black uppercase">
                           <span className="block opacity-30 mb-1">WhatsApp</span>
-                          <a href={`https://wa.me/593987654321`} className="hover:text-accent transition-colors duration-500">{CONTACT_DETAILS.whatsapp}</a>
+                          <a href={`https://wa.me/${(company?.phone || "+593 99 798 4583").replace(/[^0-9]/g, "")}`} className="hover:text-accent transition-colors duration-500">{company?.phone || "+593 99 798 4583"}</a>
                        </div>
                     </div>
                     <div className="flex items-center gap-5 group">
                        <div className="p-4 bg-accent/10 rounded-2xl group-hover:bg-accent transition-colors duration-500"><Phone className="w-4 h-4 text-accent group-hover:text-white transition-colors duration-500"/></div>
                        <div className="text-[10px] font-black uppercase">
                           <span className="block opacity-30 mb-1">Llamadas</span>
-                          <span className="group-hover:text-accent transition-colors duration-500">{CONTACT_DETAILS.phone}</span>
+                          <span className="group-hover:text-accent transition-colors duration-500">{company?.phone || "+593 99 798 4583"}</span>
                        </div>
                     </div>
                     <div className="flex items-center gap-5 group">
                        <div className="p-4 bg-accent/10 rounded-2xl group-hover:bg-accent transition-colors duration-500"><Mail className="w-4 h-4 text-accent group-hover:text-white transition-colors duration-500"/></div>
                        <div className="text-[10px] font-black uppercase">
                           <span className="block opacity-30 mb-1">Email</span>
-                          <span className="break-all group-hover:text-accent transition-colors duration-500">{CONTACT_DETAILS.email}</span>
+                          <span className="break-all group-hover:text-accent transition-colors duration-500">{company?.email || "ventas@difiori.com.ec"}</span>
                        </div>
                     </div>
                  </div>

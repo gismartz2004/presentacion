@@ -1,7 +1,7 @@
 import React, { useState } from "react";
-import { CATEGORIES } from "@/data/mock";
+import { useCategories } from "@/hooks/useCategories";
 import { cn } from "@/lib/utils";
-import { ChevronDown, Filter, Sparkles } from "lucide-react";
+import { ChevronDown, Filter, Sparkles, Loader2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
 interface CategorySidebarProps {
@@ -11,6 +11,17 @@ interface CategorySidebarProps {
 
 export function CategorySidebar({ activeCategory, setActiveCategory }: CategorySidebarProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const { data: categories, isLoading } = useCategories();
+
+  if (isLoading) {
+    return (
+      <div className="w-full lg:w-72 flex items-center justify-center p-12">
+        <Loader2 className="w-6 h-6 animate-spin text-accent" />
+      </div>
+    );
+  }
+
+  const allCategories = categories || [];
 
   return (
     <div className="w-full lg:w-72 flex flex-col gap-6">
@@ -59,19 +70,19 @@ export function CategorySidebar({ activeCategory, setActiveCategory }: CategoryS
               >
                 Más Vendidos
               </button>
-              {CATEGORIES.map((cat) => (
+              {allCategories.map((name) => (
                 <button 
-                  key={cat.slug} 
+                  key={name} 
                   className={cn(
                     "w-full text-left p-5 hover:bg-primary/10 transition-colors font-bold text-xs uppercase tracking-widest border-b border-primary/5 last:border-0",
-                    activeCategory === cat.name ? "text-accent bg-primary/5" : "text-foreground/60"
+                    activeCategory === name ? "text-accent bg-primary/5" : "text-foreground/60"
                   )}
                   onClick={() => {
-                    setActiveCategory(cat.name);
+                    setActiveCategory(name);
                     setIsOpen(false);
                   }}
                 >
-                  {cat.name}
+                  {name}
                 </button>
               ))}
             </motion.div>
@@ -118,21 +129,21 @@ export function CategorySidebar({ activeCategory, setActiveCategory }: CategoryS
             )}></div>
           </button>
           
-          {CATEGORIES.map((cat) => (
+          {allCategories.map((name) => (
             <button 
-              key={cat.slug} 
+              key={name} 
               className={cn(
                 "w-full text-left px-5 py-4 rounded-2xl transition-all duration-300 font-black text-[9px] uppercase tracking-widest flex items-center justify-between group relative overflow-hidden",
-                activeCategory === cat.name 
+                activeCategory === name 
                   ? "bg-primary/20 text-accent shadow-sm" 
                   : "text-foreground/40 hover:bg-primary/10 hover:text-foreground/80 border border-transparent"
               )}
-              onClick={() => setActiveCategory(cat.name)}
+              onClick={() => setActiveCategory(name)}
             >
-              <span className="relative z-10">{cat.name}</span>
+              <span className="relative z-10">{name}</span>
               <div className={cn(
                 "w-1 h-1 rounded-full transition-all duration-500 relative z-10",
-                activeCategory === cat.name ? "bg-accent scale-150" : "bg-primary group-hover:scale-125"
+                activeCategory === name ? "bg-accent scale-150" : "bg-primary group-hover:scale-125"
               )}></div>
             </button>
           ))}
