@@ -161,6 +161,11 @@ export default function ProductForm({
       </div>
       <div>
         <label className="block text-sm font-medium mb-1">Categoría</label>
+        <Input
+          value={formData.category}
+          onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+          required
+        />
         {filterCategories.length > 0 && (
           <>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
