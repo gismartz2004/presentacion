@@ -99,8 +99,10 @@ app.use("/api/external/reviews", externalReviewsRoutes);
 // Órdenes desde la tienda pública
 const storeOrdersRoutes = require("./routes/external/store-orders");
 const abandonedOrdersRoutes = require("./routes/external/abandoned-orders");
+const payphoneRoutes = require("./routes/external/payphone");
 app.use("/api/external/store-orders", storeOrdersRoutes);
 app.use("/api/external/store-orders/abandoned", abandonedOrdersRoutes);
+app.use("/api/external/payphone", payphoneRoutes);
 
 // Rutas externas genéricas (viejas)
 const externalRoutes = require("./routes/external/index");

@@ -11,6 +11,7 @@ import Admin from "@/pages/Admin";
 import NotFound from "@/pages/not-found";
 import ProductDetails from "@/pages/ProductDetails";
 import Checkout from "@/pages/Checkout";
+import PaymentResult from "@/pages/PaymentResult";
 import { useState } from "react";
 import { AnimatePresence } from "framer-motion";
 import { CartProvider } from "@/context/CartContext";
@@ -23,6 +24,7 @@ function Router() {
       <Route path="/v2" component={HomeV2} />
       <Route path="/product/:id" component={ProductDetails} />
       <Route path="/checkout" component={Checkout} />
+      <Route path="/payment-result" component={PaymentResult} />
       <Route path="/admin" component={Admin} />
       <Route component={NotFound} />
     </Switch>
@@ -43,7 +45,7 @@ function App() {
               <IntroScreen key="intro" onEnter={() => setShowIntro(false)} />
             ) : (
               <div key="content" className="relative z-10 transition-opacity duration-1000">
-                {!isV2 && location !== "/checkout" && <Navbar />}
+                {!isV2 && location !== "/checkout" && location !== "/payment-result" && <Navbar />}
                 <Router />
               </div>
             )}

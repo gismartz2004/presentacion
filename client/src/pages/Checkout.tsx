@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
-import { ShoppingBag, ChevronLeft, CreditCard, Truck, User, Upload, CheckCircle, Loader2, ArrowRight } from "lucide-react";
+import { ShoppingBag, ChevronLeft, CreditCard, Truck, User, CheckCircle, Loader2, ArrowRight } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
@@ -136,31 +136,60 @@ export default function Checkout() {
 
     setErrorMsg("");
     setOrderStatus("loading");
-    abandonmentSent.current = true; // Si confirma, ya no mandamos alerta de abandono
+    abandonmentSent.current = true;
 
     const firstItem = items[0];
+    const orderPayload = {
+      productId: firstItem?.product.id,
+      productName: firstItem?.product.name,
+      productPrice: firstItem?.product.price,
+      quantity: firstItem?.quantity || 1,
+      receiverName,
+      senderName,
+      phone,
+      deliveryDateTime,
+      exactAddress,
+      sector: sector.name,
+      shippingCost: sector.price,
+      cardMessage,
+      total: cartSubtotal + shippingCost,
+      couponCode: appliedCoupon?.code || null,
+    };
 
     try {
+      // --- Pago con Tarjeta: redirigir a PayPhone ---
+      if (paymentMethod === "Tarjeta") {
+        const callbackBase = `${window.location.origin}/payment-result`;
+        const res = await fetch("/api/external/payphone/prepare", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            ...orderPayload,
+            callbackUrl: callbackBase,
+            cancellationUrl: `${window.location.origin}/checkout`,
+          }),
+        });
+
+        const data = await res.json();
+
+        if (res.ok && data.status === "success") {
+          // Guardar clientTransactionId en localStorage por si el redirect pierde params
+          localStorage.setItem("pp_clientTxId", data.data.clientTransactionId);
+          clearCart();
+          window.location.href = data.data.paymentUrl;
+        } else {
+          setErrorMsg(data.message || "No se pudo iniciar el pago con tarjeta. Intenta con transferencia.");
+          setOrderStatus("error");
+          abandonmentSent.current = false;
+        }
+        return;
+      }
+
+      // --- Pago por Transferencia: flujo directo ---
       const res = await fetch("/api/external/store-orders", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          productId: firstItem?.product.id,
-          productName: firstItem?.product.name,
-          productPrice: firstItem?.product.price,
-          quantity: firstItem?.quantity || 1,
-          receiverName,
-          senderName,
-          phone,
-          deliveryDateTime,
-          exactAddress,
-          sector: sector.name,
-          shippingCost: sector.price,
-          cardMessage,
-          paymentMethod,
-          total: cartSubtotal + shippingCost, // Enviamos el total sin descuento manual, el backend lo recalcula con el couponCode
-          couponCode: appliedCoupon?.code || null,
-        }),
+        body: JSON.stringify({ ...orderPayload, paymentMethod }),
       });
 
       const data = await res.json();
@@ -172,10 +201,10 @@ export default function Checkout() {
       } else {
         setErrorMsg(data.message || "Hubo un error al procesar tu orden. Contáctanos por WhatsApp.");
         setOrderStatus("error");
-        abandonmentSent.current = false; // Permitir re-intento de abandono si falla
+        abandonmentSent.current = false;
       }
     } catch {
-      setErrorMsg("No se pudo conectar con el servidor. Contáctanos por WhatsApp: +593 xx xxx xxxx");
+      setErrorMsg("No se pudo conectar con el servidor. Contáctanos por WhatsApp.");
       setOrderStatus("error");
       abandonmentSent.current = false;
     }
@@ -322,11 +351,10 @@ export default function Checkout() {
                      exit={{ opacity: 0, height: 0, marginTop: 0 }}
                      className="overflow-hidden"
                    >
-                     <div className="bg-[#3D2852]/30 border border-dashed border-[#5A3F73] rounded-2xl p-8 flex flex-col items-center justify-center cursor-pointer hover:bg-[#3D2852]/50 transition-colors group relative">
-                       <Upload className="w-8 h-8 text-[#5A3F73] mb-3 group-hover:scale-110 transition-transform" />
-                       <span className="text-[#E6E6E6]/80 text-sm font-bold mb-1">Cargar comprobante</span>
-                       <span className="text-[#E6E6E6]/40 text-xs">Arrastra o haz clic para subir captura (PNG, JPG)</span>
-                       <input type="file" title="" className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" accept="image/*,.pdf" />
+                     <div className="bg-[#3D2852]/30 border border-dashed border-[#5A3F73] rounded-2xl p-8 flex flex-col items-center justify-center text-center">
+                       <CreditCard className="w-8 h-8 text-[#5A3F73] mb-3" />
+                       <span className="text-[#E6E6E6]/80 text-sm font-bold mb-1">Pago seguro con PayPhone</span>
+                       <span className="text-[#E6E6E6]/40 text-xs">Al confirmar serás redirigido a la pasarela de pago para ingresar los datos de tu tarjeta</span>
                      </div>
                    </motion.div>
                  )}
