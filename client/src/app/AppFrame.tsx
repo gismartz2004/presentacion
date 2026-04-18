@@ -18,11 +18,12 @@ interface AppFrameProps {
 
 export function AppFrame({ Routes, fallback = <RouteFallback /> }: AppFrameProps) {
   const [location] = useLocation();
+  const hideNavbar = location === "/checkout" || location === "/payment-gateway" || location === "/payment-result";
 
   return (
     <div className="relative min-h-screen text-foreground selection:bg-[#5A3F73] selection:text-white">
       <div className="relative z-10">
-        {location !== "/checkout" && location !== "/payment-result" && <Navbar />}
+        {!hideNavbar && <Navbar />}
         <Suspense fallback={fallback}>
           <Routes />
         </Suspense>
@@ -31,4 +32,3 @@ export function AppFrame({ Routes, fallback = <RouteFallback /> }: AppFrameProps
     </div>
   );
 }
-

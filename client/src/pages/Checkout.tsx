@@ -35,6 +35,7 @@ export default function Checkout() {
     type: string;
   } | null>(null);
   const [isValidatingCoupon, setIsValidatingCoupon] = useState(false);
+  const payphoneBoxStorageKey = "pp_box_payload";
 
   // Form refs
   const receiverNameRef = useRef<HTMLInputElement>(null);
@@ -160,29 +161,15 @@ export default function Checkout() {
     try {
       // --- Pago con Tarjeta: redirigir a PayPhone ---
       if (paymentMethod === "Tarjeta") {
-        const callbackBase = `${window.location.origin}/payment-result`;
-        const res = await fetch("/api/external/payphone/prepare", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
+        localStorage.setItem(
+          payphoneBoxStorageKey,
+          JSON.stringify({
             ...orderPayload,
-            callbackUrl: callbackBase,
+            callbackUrl: `${window.location.origin}/payment-result`,
             cancellationUrl: `${window.location.origin}/checkout`,
           }),
-        });
-
-        const data = await res.json();
-
-        if (res.ok && data.status === "success") {
-          // Guardar clientTransactionId en localStorage por si el redirect pierde params
-          localStorage.setItem("pp_clientTxId", data.data.clientTransactionId);
-          clearCart();
-          window.location.href = data.data.paymentUrl;
-        } else {
-          setErrorMsg(data.message || "No se pudo iniciar el pago con tarjeta. Intenta con transferencia.");
-          setOrderStatus("error");
-          abandonmentSent.current = false;
-        }
+        );
+        setLocation("/payment-gateway");
         return;
       }
 

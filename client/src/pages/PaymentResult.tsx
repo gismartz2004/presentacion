@@ -3,10 +3,12 @@ import { Link } from "wouter";
 import { motion } from "framer-motion";
 import { CheckCircle, XCircle, Loader2 } from "lucide-react";
 import { Seo } from "@/components/Seo";
+import { useCart } from "@/context/CartContext";
 
 type ResultStatus = "loading" | "success" | "failed" | "cancelled" | "error";
 
 export default function PaymentResult() {
+  const { clearCart } = useCart();
   const [status, setStatus] = useState<ResultStatus>("loading");
   const [orderNumber, setOrderNumber] = useState("");
   const confirmed = useRef(false);
@@ -19,6 +21,11 @@ export default function PaymentResult() {
     const payphoneId = params.get("id");
     const clientTransactionId = params.get("clientTransactionId");
     const transactionStatus = params.get("transactionStatus");
+    const clearPaymentDraft = () => {
+      localStorage.removeItem("pp_clientTxId");
+      localStorage.removeItem("pp_box_payload");
+      sessionStorage.removeItem("pp_web_token");
+    };
 
     // Si no hay clientTransactionId en la URL, buscar en localStorage (fallback)
     const finalClientTxId = clientTransactionId || localStorage.getItem("pp_clientTxId");
@@ -28,33 +35,85 @@ export default function PaymentResult() {
       return;
     }
 
-    fetch("/api/external/payphone/confirm", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
+    const finalizeOrder = async (payload: Record<string, unknown>) => {
+      const response = await fetch("/api/payphone-web/finalize", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      return response.json();
+    };
+
+    const confirmWebBoxInBrowser = async () => {
+      if (!payphoneId || transactionStatus === "CANCELLED") {
+        return finalizeOrder({
+          id: payphoneId,
+          clientTransactionId: finalClientTxId,
+          transactionStatus: "CANCELLED",
+        });
+      }
+
+      const webToken = sessionStorage.getItem("pp_web_token");
+      if (!webToken) {
+        throw new Error("No se encontró el token web de PayPhone para confirmar el pago.");
+      }
+
+      const confirmResponse = await fetch("https://pay.payphonetodoesposible.com/api/button/V2/Confirm", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${webToken}`,
+        },
+        body: JSON.stringify({
+          id: Number(payphoneId),
+          clientTxId: finalClientTxId,
+        }),
+      });
+
+      const rawBody = await confirmResponse.text();
+      if (!confirmResponse.ok) {
+        throw new Error(`PayPhone Confirm HTTP ${confirmResponse.status}: ${rawBody}`);
+      }
+
+      const confirmData = JSON.parse(rawBody);
+      return finalizeOrder({
         id: payphoneId,
         clientTransactionId: finalClientTxId,
-        transactionStatus,
-      }),
-    })
-      .then((r) => r.json())
-      .then((data) => {
-        if (data.status === "success") {
-          const ps = data.data?.paymentStatus;
-          setOrderNumber(data.data?.orderNumber || "");
-          if (ps === "PAID") {
-            setStatus("success");
-            localStorage.removeItem("pp_clientTxId");
-          } else if (ps === "CANCELLED") {
-            setStatus("cancelled");
-          } else {
-            setStatus("failed");
-          }
-        } else {
+        transactionStatus: confirmData.transactionStatus,
+        amount: confirmData.amount,
+        authorizationCode: confirmData.authorizationCode,
+      });
+    };
+
+    const confirmOrder = async () => {
+      try {
+        const data = await confirmWebBoxInBrowser();
+
+        if (data.status !== "success") {
           setStatus("error");
+          return;
         }
-      })
-      .catch(() => setStatus("error"));
+
+        const ps = data.data?.paymentStatus;
+        setOrderNumber(data.data?.orderNumber || data.data?.reference || finalClientTxId || "");
+
+        if (ps === "PAID") {
+          setStatus("success");
+          clearCart();
+          clearPaymentDraft();
+        } else if (ps === "CANCELLED") {
+          setStatus("cancelled");
+          clearPaymentDraft();
+        } else {
+          setStatus("failed");
+          clearPaymentDraft();
+        }
+      } catch {
+        setStatus("error");
+      }
+    };
+
+    confirmOrder();
   }, []);
 
   if (status === "loading") {

@@ -2,6 +2,8 @@ import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { getProdTemplate, serveStatic } from "./static";
 import { createServer } from "http";
+import { existsSync, readFileSync } from "fs";
+import { resolve } from "path";
 import { INITIAL_PRODUCTS } from "../client/src/data/mock";
 import {
   BEST_SELLERS_CATEGORY_NAME,
@@ -26,8 +28,49 @@ import type { ViteDevServer } from "vite";
 
 const app = express();
 const httpServer = createServer(app);
+
+function hydratePayphoneEnvFromAdminEnv() {
+  if (process.env.PAYPHONE_WEB_TOKEN && process.env.PAYPHONE_WEB_STORE_ID) return;
+
+  const envPath = resolve(process.cwd(), "admin-floreria/api/.env");
+  if (!existsSync(envPath)) return;
+
+  const envFile = readFileSync(envPath, "utf8");
+  for (const rawLine of envFile.split(/\r?\n/)) {
+    const line = rawLine.trim();
+    if (!line || line.startsWith("#")) continue;
+
+    const separatorIndex = line.indexOf("=");
+    if (separatorIndex === -1) continue;
+
+    const key = line.slice(0, separatorIndex).trim();
+    if (
+      key !== "PAYPHONE_WEB_TOKEN" &&
+      key !== "PAYPHONE_WEB_STORE_ID" &&
+      key !== "PAYPHONE_TOKEN" &&
+      key !== "PAYPHONE_STORE_ID"
+    ) continue;
+
+    const value = line.slice(separatorIndex + 1).trim().replace(/^['"]|['"]$/g, "");
+    if (value && !process.env[key]) {
+      process.env[key] = value;
+    }
+  }
+
+  if (!process.env.PAYPHONE_WEB_TOKEN && process.env.PAYPHONE_TOKEN) {
+    process.env.PAYPHONE_WEB_TOKEN = process.env.PAYPHONE_TOKEN;
+  }
+  if (!process.env.PAYPHONE_WEB_STORE_ID && process.env.PAYPHONE_STORE_ID) {
+    process.env.PAYPHONE_WEB_STORE_ID = process.env.PAYPHONE_STORE_ID;
+  }
+}
+
+hydratePayphoneEnvFromAdminEnv();
+
 const BACKEND_ORIGIN = (process.env.BACKEND_URL || "http://localhost:4001").replace(/\/$/, "");
 const SITE_URL = (process.env.SITE_URL || process.env.VITE_SITE_URL || "https://difiori.com").replace(/\/$/, "");
+const PAYPHONE_WEB_TOKEN = process.env.PAYPHONE_WEB_TOKEN || process.env.PAYPHONE_TOKEN;
+const PAYPHONE_WEB_STORE_ID = process.env.PAYPHONE_WEB_STORE_ID || process.env.PAYPHONE_STORE_ID;
 
 declare module "http" {
   interface IncomingMessage {
@@ -51,6 +94,15 @@ function buildBackendUrl(originalUrl: string) {
 
 function buildSiteUrl(path: string) {
   return `${SITE_URL}${path.startsWith("/") ? path : `/${path}`}`;
+}
+
+function formatPayphonePhone(rawPhone: unknown) {
+  const normalized = String(rawPhone || "").trim().replace(/\s+/g, "");
+  if (!normalized) return undefined;
+  if (normalized.startsWith("+")) return normalized;
+  if (normalized.startsWith("0")) return `+593${normalized.slice(1)}`;
+  if (/^\d+$/.test(normalized)) return `+593${normalized}`;
+  return normalized;
 }
 
 function buildRequestOrigin(req: Request) {
@@ -213,6 +265,138 @@ async function proxyToBackend(req: Request, res: Response) {
     return res.status(500).json({ status: "error", message: "Error conectando con el servidor de productos" });
   }
 }
+
+async function postJsonToBackend(path: string, payload: unknown) {
+  const response = await fetch(buildBackendUrl(path), {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(payload),
+  });
+
+  const rawBody = await response.text();
+
+  let data: unknown = null;
+  try {
+    data = rawBody ? JSON.parse(rawBody) : null;
+  } catch {
+    data = rawBody;
+  }
+
+  return { response, data, rawBody };
+}
+
+app.post("/api/payphone-web/box-prepare", async (req: Request, res: Response) => {
+  try {
+    if (!PAYPHONE_WEB_TOKEN) {
+      return res.status(503).json({
+        status: "error",
+        message: "PAYPHONE_WEB_TOKEN no está configurado en el servidor web.",
+      });
+    }
+
+    const { response, data, rawBody } = await postJsonToBackend("/api/external/payphone/box-session", req.body);
+    if (!response.ok || !data || typeof data !== "object" || !("status" in data) || data.status !== "success") {
+      return res.status(response.ok ? 502 : response.status).json({
+        status: "error",
+        message: typeof data === "object" && data && "message" in data ? String(data.message) : "No se pudo crear la sesión de pago.",
+        detail: rawBody,
+      });
+    }
+
+    const sessionData = data.data as {
+      orderId: string;
+      orderNumber: string;
+      clientTransactionId: string;
+      amount: number;
+      amountWithoutTax: number;
+      amountWithTax: number;
+      tax: number;
+      currency: string;
+      reference: string;
+    };
+    const phoneNumber = formatPayphonePhone(req.body?.phone);
+
+    const paymentBoxData = {
+      amount: sessionData.amount,
+      amountWithoutTax: sessionData.amountWithoutTax,
+      amountWithTax: sessionData.amountWithTax,
+      tax: sessionData.tax,
+      service: 0,
+      tip: 0,
+      currency: sessionData.currency,
+      token: PAYPHONE_WEB_TOKEN,
+      ...(PAYPHONE_WEB_STORE_ID ? { storeId: PAYPHONE_WEB_STORE_ID } : {}),
+      reference: sessionData.reference,
+      lang: "es",
+      defaultMethod: "card",
+      timeZone: -5,
+      lat: "-1.831239",
+      lng: "-78.183406",
+      optionalParameter: sessionData.orderId,
+      ...(phoneNumber ? { phoneNumber } : {}),
+      clientTransactionId: sessionData.clientTransactionId,
+    };
+
+    console.log("[PAYPHONE_WEB][BOX_PREPARE]", JSON.stringify({
+      orderId: sessionData.orderId,
+      orderNumber: sessionData.orderNumber,
+      reference: sessionData.reference,
+      clientTransactionId: sessionData.clientTransactionId,
+      paymentBoxData: {
+        ...paymentBoxData,
+        token: `${PAYPHONE_WEB_TOKEN.slice(0, 8)}...`,
+      },
+    }, null, 2));
+
+    return res.status(200).json({
+      status: "success",
+      data: {
+        orderId: sessionData.orderId,
+        orderNumber: sessionData.orderNumber,
+        reference: sessionData.reference,
+        clientTransactionId: sessionData.clientTransactionId,
+        paymentBoxData,
+      },
+    });
+  } catch (error) {
+    console.error("[PAYPHONE_WEB][BOX_PREPARE][ERROR]", error);
+    return res.status(500).json({
+      status: "error",
+      message: "No se pudo preparar el Payment Box desde el servidor web.",
+    });
+  }
+});
+
+app.post("/api/payphone-web/finalize", async (req: Request, res: Response) => {
+  try {
+    const { response, data, rawBody } = await postJsonToBackend("/api/external/payphone/finalize", req.body);
+
+    console.log("[PAYPHONE_WEB][FINALIZE_PROXY]", JSON.stringify({
+      status: response.status,
+      body: rawBody,
+    }, null, 2));
+
+    if (!response.ok) {
+      return res.status(response.status).json(
+        typeof data === "object" && data ? data : {
+          status: "error",
+          message: "No se pudo persistir el resultado del pago en el backend.",
+          detail: rawBody,
+        },
+      );
+    }
+
+    return res.status(200).json(data);
+  } catch (error) {
+    console.error("[PAYPHONE_WEB][FINALIZE][ERROR]", error);
+    return res.status(500).json({
+      status: "error",
+      message: "No se pudo finalizar el pago desde el servidor web.",
+    });
+  }
+});
 
 function sendGone(res: Response, path: string) {
   res.setHeader("X-Robots-Tag", "noindex, nofollow");
@@ -452,8 +636,10 @@ app.use((req, res, next) => {
   // Other ports are firewalled. Default to 5000 if not specified.
   // this serves both the API and the client.
   // It is the only port that is not firewalled.
-  const port = parseInt(process.env.PORT || "5000", 10);
-  const host = process.env.NODE_ENV === "production" ? "0.0.0.0" : "127.0.0.1";
+  const port = parseInt(process.env.PORT || "3000", 10);
+  // En desarrollo escuchamos en 0.0.0.0 para evitar problemas de binding local,
+  // pero puedes abrir la app desde http://localhost:5000 sin problema.
+  const host = "0.0.0.0";
   httpServer.listen(
     {
       port,

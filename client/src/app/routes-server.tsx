@@ -5,6 +5,7 @@ import CategoryPage from "@/pages/CategoryPage";
 import NotFound from "@/pages/not-found";
 import ProductDetails from "@/pages/ProductDetails";
 import Checkout from "@/pages/Checkout";
+import PaymentGateway from "@/pages/PaymentGateway";
 import PaymentResult from "@/pages/PaymentResult";
 
 export function ServerRoutes() {
@@ -16,9 +17,9 @@ export function ServerRoutes() {
       <Route path="/producto/:slug" component={ProductDetails} />
       <Route path="/product/:id" component={ProductDetails} />
       <Route path="/checkout" component={Checkout} />
+      <Route path="/payment-gateway" component={PaymentGateway} />
       <Route path="/payment-result" component={PaymentResult} />
       <Route component={NotFound} />
     </Switch>
   );
 }
-
