@@ -174,6 +174,9 @@ export default function ProductDetails() {
                 src={selectedImage} 
                 className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105 cursor-zoom-in"
                 alt={product.name}
+                loading="eager"
+                decoding="async"
+                fetchPriority="high"
               />
               <button className="absolute top-8 right-8 p-4 bg-white/80 backdrop-blur-md rounded-full text-accent shadow-xl border border-primary/10 hover:scale-110 transition-transform">
                 <Heart className="w-6 h-6" />
@@ -191,7 +194,14 @@ export default function ProductDetails() {
                     selectedImage === img ? "border-accent shadow-lg" : "border-primary/10"
                   )}
                 >
-                  <img src={img} className="w-full h-full object-cover" alt={`${product.name} vista ${i + 1}`} />
+                  <img
+                    src={img}
+                    className="w-full h-full object-cover"
+                    alt={`${product.name} vista ${i + 1}`}
+                    loading="lazy"
+                    decoding="async"
+                    fetchPriority="low"
+                  />
                 </button>
               ))}
             </div>

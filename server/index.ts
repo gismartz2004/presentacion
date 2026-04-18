@@ -4,6 +4,8 @@ import { getProdTemplate, serveStatic } from "./static";
 import { createServer } from "http";
 import { existsSync, readFileSync } from "fs";
 import { resolve } from "path";
+import { Readable } from "stream";
+import { pipeline } from "stream/promises";
 import { INITIAL_PRODUCTS } from "../client/src/data/mock";
 import {
   BEST_SELLERS_CATEGORY_NAME,
@@ -240,12 +242,23 @@ async function prefetchSsrRouteData(queryClient: QueryClient, path: string, base
 
 async function proxyToBackend(req: Request, res: Response) {
   const backendUrl = buildBackendUrl(req.originalUrl);
+  const contentType = req.get("Content-Type");
+  const accept = req.get("Accept");
+  const ifNoneMatch = req.get("If-None-Match");
+  const ifModifiedSince = req.get("If-Modified-Since");
+  const range = req.get("Range");
+  const cacheControl = req.get("Cache-Control");
 
   try {
     const response = await fetch(backendUrl, {
       method: req.method,
       headers: {
-        "Content-Type": req.get("Content-Type") || "application/json",
+        ...(contentType ? { "Content-Type": contentType } : {}),
+        ...(accept ? { Accept: accept } : {}),
+        ...(ifNoneMatch ? { "If-None-Match": ifNoneMatch } : {}),
+        ...(ifModifiedSince ? { "If-Modified-Since": ifModifiedSince } : {}),
+        ...(range ? { Range: range } : {}),
+        ...(cacheControl ? { "Cache-Control": cacheControl } : {}),
       },
       body: ["POST", "PUT", "PATCH"].includes(req.method) ? JSON.stringify(req.body) : undefined,
     });
@@ -258,8 +271,18 @@ async function proxyToBackend(req: Request, res: Response) {
       res.setHeader(key, value);
     });
 
-    const buffer = Buffer.from(await response.arrayBuffer());
-    return res.status(response.status).send(buffer);
+    if (req.originalUrl.startsWith("/uploads/") && !response.headers.has("cache-control")) {
+      res.setHeader("Cache-Control", "public, max-age=31536000, stale-while-revalidate=86400");
+    }
+
+    res.status(response.status);
+
+    if (req.method === "HEAD" || !response.body) {
+      return res.end();
+    }
+
+    await pipeline(Readable.fromWeb(response.body as any), res);
+    return;
   } catch (error) {
     console.error(`Proxy Error (Store -> Backend):`, error);
     return res.status(500).json({ status: "error", message: "Error conectando con el servidor de productos" });
@@ -305,7 +328,19 @@ app.post("/api/payphone-web/box-prepare", async (req: Request, res: Response) =>
       });
     }
 
-    const sessionData = data.data as {
+    const sessionData = (data as unknown as {
+      data: {
+        orderId: string;
+        orderNumber: string;
+        clientTransactionId: string;
+        amount: number;
+        amountWithoutTax: number;
+        amountWithTax: number;
+        tax: number;
+        currency: string;
+        reference: string;
+      };
+    }).data as {
       orderId: string;
       orderNumber: string;
       clientTransactionId: string;

@@ -31,6 +31,8 @@ export function ProductCard({ product }: ProductCardProps) {
           src={product.image} 
           alt={`${product.name} - Florería DIFIORI Guayaquil`}
           loading="lazy"
+          decoding="async"
+          fetchPriority="low"
           className="w-full h-full object-cover transition-transform duration-[1.5s] group-hover:scale-110"
         />
         <div className="absolute inset-0 bg-black/5 group-hover:bg-transparent transition-colors duration-500" />

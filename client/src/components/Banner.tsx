@@ -84,6 +84,9 @@ export function Banner() {
                 initial={{ scale: 1.15 }}
                 animate={{ scale: 1 }}
                 transition={{ duration: 25, ease: "linear" }}
+                loading="eager"
+                decoding="async"
+                fetchPriority="high"
                 className="w-full h-full object-cover object-center contrast-[1.15] saturate-[1.1] brightness-[0.85]"
               />
             )}

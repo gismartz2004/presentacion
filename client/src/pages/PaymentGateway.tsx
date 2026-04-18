@@ -71,12 +71,15 @@ export default function PaymentGateway() {
 
     const initializePayPhoneBox = () => {
       if (cancelled) return;
+      const PayphoneButtonBox = window.PPaymentButtonBox;
+      if (!PayphoneButtonBox) return;
+
       const container = document.getElementById("pp-button");
       if (container) {
         container.innerHTML = "";
       }
 
-      const payphoneBox = new window.PPaymentButtonBox(widgetPayload);
+      const payphoneBox = new PayphoneButtonBox(widgetPayload);
       payphoneBox.render("pp-button");
     };
 
