@@ -85,7 +85,7 @@ export default function Checkout() {
             abandonedAt: new Date().toISOString(),
             source: "CHECKOUT_WEB",
             items,
-            total: finalTotal,
+            total: cartTotal + sector.price - (appliedCoupon ? (appliedCoupon.type === "PERCENTAGE" ? cartTotal * appliedCoupon.percent_value : appliedCoupon.amount || 0) : 0),
           }),
           keepalive: true,
         });
@@ -100,7 +100,7 @@ export default function Checkout() {
       clearTimeout(timer);
       window.removeEventListener("beforeunload", handleAbandonment);
     };
-  }, [items, orderStatus, sector.name, paymentMethod, appliedCoupon?.code, finalTotal]);
+  }, [items, orderStatus, sector.name, paymentMethod, appliedCoupon, cartTotal]);
   // -------------------------------------
 
   const cartSubtotal = cartTotal;
@@ -573,5 +573,8 @@ function readFileAsDataUrl(file: File): Promise<string> {
     reader.readAsDataURL(file);
   });
 }
+
+
+
 
 
