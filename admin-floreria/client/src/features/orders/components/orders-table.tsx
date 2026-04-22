@@ -66,7 +66,7 @@ export function OrdersTable({
       )}
       <Table>
         <TableHeader>
-          <TableRow className="bg-gray-50">
+          <TableRow className="bg-gray-100 hover:bg-gray-100">
             <TableHead className="w-10">
               <Checkbox
                 checked={allPageSelected}
@@ -75,14 +75,14 @@ export function OrdersTable({
                 }
               />
             </TableHead>
-            <TableHead>Orden</TableHead>
-            <TableHead>Cliente</TableHead>
-            <TableHead>Estado</TableHead>
-            <TableHead>Pago</TableHead>
-            <TableHead>Fecha</TableHead>
-            <TableHead className="text-right">Total</TableHead>
-            <TableHead className="text-right">Pendiente</TableHead>
-            <TableHead className="text-center">Acciones</TableHead>
+            <TableHead className="font-semibold text-gray-800">Orden</TableHead>
+            <TableHead className="font-semibold text-gray-800">Cliente</TableHead>
+            <TableHead className="font-semibold text-gray-800">Estado</TableHead>
+            <TableHead className="font-semibold text-gray-800">Pago</TableHead>
+            <TableHead className="font-semibold text-gray-800">Fecha</TableHead>
+            <TableHead className="text-right font-semibold text-gray-800">Total</TableHead>
+            <TableHead className="text-right font-semibold text-gray-800">Pendiente</TableHead>
+            <TableHead className="text-center font-semibold text-gray-800">Acciones</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>

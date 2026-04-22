@@ -17,6 +17,24 @@ async function getCompanyForAdmin(adminId) {
 
 function sanitizePaymentSettings(input) {
   const source = input && typeof input === "object" ? input : {};
+  const parseAmount = (value) => {
+    if (typeof value === "number") {
+      return Number.isFinite(value) ? value : NaN;
+    }
+
+    if (typeof value !== "string") return NaN;
+
+    const normalized = value
+      .trim()
+      .replace(/\$/g, "")
+      .replace(/\s+/g, "")
+      .replace(",", ".");
+
+    if (!normalized) return NaN;
+
+    const numericValue = Number(normalized);
+    return Number.isFinite(numericValue) ? numericValue : NaN;
+  };
   const getString = (key) => {
     const value = source[key];
     return typeof value === "string" ? value.trim() : "";
@@ -30,7 +48,7 @@ function sanitizePaymentSettings(input) {
         if (!item || typeof item !== "object") return null;
 
         const sector = typeof item.sector === "string" ? item.sector.trim() : "";
-        const numericCost = Number(item.cost);
+        const numericCost = parseAmount(item.cost);
         const cost = Number.isFinite(numericCost) ? numericCost : NaN;
 
         if (!sector || !Number.isFinite(cost) || cost < 0) return null;

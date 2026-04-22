@@ -32,6 +32,15 @@ type PaymentMethod = "PayPal" | "Payphone" | "Banco" | "Zelle";
 type CheckoutStep = "sender" | "receiver" | "payment";
 type ShippingSectorRate = { sector: string; cost: number };
 
+function normalizeSectorName(value: string) {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, " ");
+}
+
 const CHECKOUT_STEPS: {
   id: CheckoutStep;
   label: string;
@@ -108,13 +117,13 @@ function resolveShippingCostBySector(
   sector: string,
   rates: ShippingSectorRate[]
 ) {
-  const normalizedSector = sector.trim().toLowerCase();
+  const normalizedSector = normalizeSectorName(sector);
   if (!normalizedSector) {
     return { cost: 0, matchedSector: "", isMatched: false };
   }
 
   const exactMatch = rates.find(
-    (item) => item.sector.trim().toLowerCase() === normalizedSector
+    (item) => normalizeSectorName(item.sector) === normalizedSector
   );
 
   if (exactMatch) {
@@ -126,7 +135,7 @@ function resolveShippingCostBySector(
   }
 
   const partialMatch = rates.find((item) => {
-    const candidate = item.sector.trim().toLowerCase();
+    const candidate = normalizeSectorName(item.sector);
     return normalizedSector.includes(candidate) || candidate.includes(normalizedSector);
   });
 
@@ -450,7 +459,7 @@ export default function Checkout() {
       shippingCost,
       cardMessage,
       observations,
-      total: cartSubtotal + shippingCost,
+      total: finalTotal,
       couponCode: appliedCoupon?.code || null,
     };
 
@@ -809,7 +818,7 @@ export default function Checkout() {
                     <span>Envio</span>
                     <span className="text-[#5A3F73]">
                       {shippingResolution.isMatched
-                        ? `$${shippingCost.toFixed(2)}`
+                        ? `+$${shippingCost.toFixed(2)}`
                         : sectorInput
                           ? "A coordinar"
                           : "Ingresa tu sector"}
@@ -831,6 +840,11 @@ export default function Checkout() {
                       ${finalTotal.toFixed(2)}
                     </span>
                   </div>
+                  {shippingResolution.isMatched && (
+                    <p className="text-right text-[11px] font-semibold text-[#6B5487]">
+                      Total con envio adicional de ${shippingCost.toFixed(2)} para {shippingResolution.matchedSector}.
+                    </p>
+                  )}
                 </div>
                 <button
                   type="button"
@@ -969,7 +983,13 @@ export default function Checkout() {
                       onChange={(e) => setSectorInput(e.target.value)}
                       className="checkout-input"
                       placeholder="Ej: Urdesa, Alborada, Ceibos"
+                      list="shipping-sector-options"
                     />
+                    <datalist id="shipping-sector-options">
+                      {shippingSectorRates.map((item) => (
+                        <option key={item.sector} value={item.sector} />
+                      ))}
+                    </datalist>
                     <span className="text-xs font-medium text-[#6B5487]">
                       {shippingResolution.isMatched
                         ? `Costo de envio para ${shippingResolution.matchedSector}: $${shippingCost.toFixed(2)}`

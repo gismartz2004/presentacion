@@ -18,7 +18,7 @@ export type { CompanyInfo };
 export async function fetchCompany(baseUrl?: string): Promise<CompanyInfo> {
   try {
     const res = await fetch(resolveApiUrl(API_URL, baseUrl));
-    if (!res.ok) throw new Error("Error al cargar información de la empresa");
+    if (!res.ok) throw new Error("Error al cargar informacion de la empresa");
     const json = await res.json();
     return json.data;
   } catch (error) {
@@ -36,6 +36,7 @@ export function useCompany() {
   return useQuery<CompanyInfo, Error>({
     queryKey: companyQueryKey,
     queryFn: () => fetchCompany(),
-    staleTime: 1000 * 60 * 30, // 30 minutos de caché para info corporativa
+    staleTime: 0,
+    refetchOnMount: "always",
   });
 }

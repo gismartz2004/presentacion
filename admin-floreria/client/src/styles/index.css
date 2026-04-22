@@ -117,6 +117,27 @@
   body {
     @apply bg-background text-foreground;
   }
+
+  input,
+  textarea,
+  select {
+    color: #111827;
+    -webkit-text-fill-color: #111827;
+    caret-color: #2563eb;
+  }
+
+  input::placeholder,
+  textarea::placeholder {
+    color: #9ca3af;
+    -webkit-text-fill-color: #9ca3af;
+    opacity: 1;
+  }
+
+  input:not([type="checkbox"]):not([type="radio"]):not([type="file"]),
+  textarea,
+  select {
+    background-color: #ffffff;
+  }
 }
 
 /* Custom scrollbar styles */

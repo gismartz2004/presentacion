@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type InputHTMLAttributes } from "react";
 import { toast } from "sonner";
 import ecommerceService from "@/core/api/ecommerce-service";
 import { Button } from "@/shared/components/ui/button";
@@ -49,7 +49,7 @@ const DEFAULT_SETTINGS: PaymentSettings = {
   payphoneLiveToken: "",
   payphoneLiveWebhookToken: "",
   transferInstructions: "",
-  shippingSectorRates: [],
+  shippingSectorRates: [{ sector: "", cost: "" }],
   ownerNotificationEmail: "",
   ownerNotificationName: "",
 };
@@ -76,6 +76,14 @@ function normalizeSectorRates(value: unknown): ShippingSectorRate[] {
   });
 }
 
+function ensureEditableSectorRates(value: ShippingSectorRate[]): ShippingSectorRate[] {
+  return value.length > 0 ? value : [{ sector: "", cost: "" }];
+}
+
+function normalizeEditableCost(value: string) {
+  return value.replace(/[^\d,.\s$]/g, "");
+}
+
 export default function PaymentsPage() {
   const [form, setForm] = useState<PaymentSettings>(DEFAULT_SETTINGS);
   const [isLoading, setIsLoading] = useState(true);
@@ -89,7 +97,9 @@ export default function PaymentsPage() {
         setForm({
           ...DEFAULT_SETTINGS,
           ...paymentSettings,
-          shippingSectorRates: normalizeSectorRates(paymentSettings.shippingSectorRates),
+          shippingSectorRates: ensureEditableSectorRates(
+            normalizeSectorRates(paymentSettings.shippingSectorRates)
+          ),
         });
       } catch (error) {
         console.error("Load payment settings error:", error);
@@ -135,21 +145,41 @@ export default function PaymentsPage() {
   const removeSectorRate = (index: number) => {
     setForm((current) => ({
       ...current,
-      shippingSectorRates: current.shippingSectorRates.filter((_, itemIndex) => itemIndex !== index),
+      shippingSectorRates: ensureEditableSectorRates(
+        current.shippingSectorRates.filter((_, itemIndex) => itemIndex !== index)
+      ),
     }));
   };
 
   const handleSave = async () => {
+    const normalizedSectorRates = form.shippingSectorRates.map((item) => ({
+      sector: item.sector.trim(),
+      cost: item.cost.trim(),
+    }));
+    const hasIncompleteSectorRate = normalizedSectorRates.some(
+      (item) => (item.sector && !item.cost) || (!item.sector && item.cost)
+    );
+
+    if (hasIncompleteSectorRate) {
+      toast.error("Cada sector debe tener nombre y costo para poder guardarse.");
+      return;
+    }
+
     try {
       setIsSaving(true);
-      await ecommerceService.put("/admin/company/payment-settings", {
+      const response = await ecommerceService.put("/admin/company/payment-settings", {
         ...form,
-        shippingSectorRates: form.shippingSectorRates
-          .map((item) => ({
-            sector: item.sector.trim(),
-            cost: item.cost.trim(),
-          }))
-          .filter((item) => item.sector && item.cost),
+        shippingSectorRates: normalizedSectorRates.filter(
+          (item) => item.sector && item.cost
+        ),
+      });
+      const savedPaymentSettings = response.data?.data?.settings?.paymentSettings || {};
+      setForm({
+        ...DEFAULT_SETTINGS,
+        ...savedPaymentSettings,
+        shippingSectorRates: ensureEditableSectorRates(
+          normalizeSectorRates(savedPaymentSettings.shippingSectorRates)
+        ),
       });
       toast.success("Configuracion de pagos guardada");
     } catch (error) {
@@ -182,39 +212,58 @@ export default function PaymentsPage() {
         <p className="mt-1 text-sm text-gray-500">
           Define los sectores y el costo de envio que vera el cliente en checkout segun lo que escriba.
         </p>
-
-        <div className="mt-6 space-y-3">
-          {form.shippingSectorRates.length === 0 ? (
-            <div className="rounded-lg border border-dashed border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-500">
-              Aun no hay sectores configurados.
-            </div>
-          ) : (
-            form.shippingSectorRates.map((item, index) => (
-              <div key={`${index}-${item.sector}`} className="grid gap-3 rounded-lg border bg-gray-50 p-3 md:grid-cols-[1fr_180px_auto]">
-                <Field
-                  label="Sector"
-                  value={item.sector}
-                  onChange={(value) => updateSectorRate(index, "sector", value)}
-                  placeholder="Ej: Urdesa, Alborada, Ceibos"
-                />
-                <Field
-                  label="Costo"
-                  value={item.cost}
-                  onChange={(value) => updateSectorRate(index, "cost", value)}
-                  placeholder="Ej: 3.50"
-                />
-                <div className="flex items-end">
-                  <Button type="button" variant="outline" onClick={() => removeSectorRate(index)}>
-                    Quitar
-                  </Button>
-                </div>
-              </div>
-            ))
-          )}
-
-          <Button type="button" variant="outline" onClick={addSectorRate}>
+        <p className="mt-2 text-xs text-gray-500">
+          Para guardar una fila debes completar ambos campos: sector y costo.
+        </p>
+        <div className="mt-4 flex flex-wrap gap-3">
+          <Button
+            type="button"
+            variant="outline"
+            className="border-gray-300 bg-white text-gray-700 hover:bg-gray-100 hover:text-gray-900"
+            onClick={addSectorRate}
+          >
             Agregar sector
           </Button>
+          <Button
+            type="button"
+            onClick={handleSave}
+            disabled={isSaving}
+            className="bg-blue-600 text-white hover:bg-blue-700"
+          >
+            {isSaving ? "Guardando sectores..." : "Guardar sectores"}
+          </Button>
+        </div>
+
+        <div className="mt-6 space-y-3">
+          {form.shippingSectorRates.map((item, index) => (
+            <div key={index} className="grid gap-3 rounded-lg border bg-gray-50 p-3 md:grid-cols-[1fr_180px_auto]">
+              <Field
+                label="Sector"
+                value={item.sector}
+                onChange={(value) => updateSectorRate(index, "sector", value)}
+                placeholder="Ej: Urdesa, Alborada, Ceibos"
+              />
+              <Field
+                label="Costo"
+                value={item.cost}
+                onChange={(value) =>
+                  updateSectorRate(index, "cost", normalizeEditableCost(value))
+                }
+                placeholder="Ej: 3.50"
+                inputMode="decimal"
+              />
+              <div className="flex items-end">
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="border-gray-300 bg-white text-gray-700 hover:bg-gray-100 hover:text-gray-900"
+                  onClick={() => removeSectorRate(index)}
+                >
+                  Quitar
+                </Button>
+              </div>
+            </div>
+          ))}
         </div>
       </section>
 
@@ -322,7 +371,11 @@ export default function PaymentsPage() {
       </section>
 
       <div className="flex justify-end">
-        <Button onClick={handleSave} disabled={isSaving}>
+        <Button
+          onClick={handleSave}
+          disabled={isSaving}
+          className="bg-blue-600 text-white hover:bg-blue-700"
+        >
           {isSaving ? "Guardando..." : "Guardar configuracion"}
         </Button>
       </div>
@@ -335,11 +388,13 @@ function Field({
   value,
   onChange,
   placeholder,
+  inputMode,
 }: {
   label: string;
   value: string;
   onChange: (value: string) => void;
   placeholder?: string;
+  inputMode?: InputHTMLAttributes<HTMLInputElement>["inputMode"];
 }) {
   return (
     <label className="space-y-2 text-sm">
@@ -348,7 +403,8 @@ function Field({
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
-        className="h-11 w-full rounded-lg border border-gray-200 bg-white px-3 text-sm outline-none focus:border-blue-500"
+        inputMode={inputMode}
+        className="h-11 w-full rounded-lg border border-gray-300 bg-white px-3 text-sm text-gray-900 placeholder:text-gray-400 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
       />
     </label>
   );
