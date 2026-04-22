@@ -32,7 +32,7 @@ export const CATEGORIES = [
   { 
     name: "Desayunos sorpresa", 
     slug: "desayunos-sorpresa", 
-    image: "/assets/product3.png" 
+    image: "/assets/Desayunos sorpresa para aniversario, con minitorta  en Guayaquil..jpeg" 
   },
   { 
     name: "Regalos con vino", 
@@ -42,12 +42,12 @@ export const CATEGORIES = [
   { 
     name: "Cumpleaños", 
     slug: "cumpleanos", 
-    image: "/assets/product6.png" 
+    image: "/assets/Ramo de rosas con rosas rosadas para 15 años en Guayaquil.jpeg" 
   },
   { 
     name: "Amor y aniversario", 
     slug: "amor-y-aniversario", 
-    image: "/assets/product4.png" 
+    image: "/assets/Ramo de flores para aniversario, con rosas rojas, vino, ferrero , en Guayaquil..jpeg" 
   }
 ];
 
@@ -86,8 +86,12 @@ export const INITIAL_PRODUCTS: Product[] = [
     description: "Completo desayuno que incluye café premium, croissants recién horneados, ensalada de frutas frescas, jugo de naranja y un mini bouquet decorativo.",
     category: "Desayunos sorpresa",
     price: "$55.00",
-    image: "/assets/product3.png",
-    additionalImages: ["/assets/product3.png"],
+    image: "/assets/Desayunos sorpresa para aniversario, con minitorta  en Guayaquil..jpeg",
+    additionalImages: [
+      "/assets/Desayunos sorpresa para aniversario, con minitorta  en Guayaquil..jpeg",
+      "/assets/Desayuno sorpresa con flores para aniversario en Guayaquil.jpeg",
+      "/assets/product3.png",
+    ],
     isBestSeller: true,
     stock: 8,
     deliveryTime: "En la mañana (6am - 10am)",
@@ -100,8 +104,11 @@ export const INITIAL_PRODUCTS: Product[] = [
     description: "Caja de lujo con 12 rosas seleccionadas y follaje decorativo. Un regalo sofisticado y duradero.",
     category: "Amor y aniversario",
     price: "$32.00",
-    image: "/assets/product4.png",
-    additionalImages: ["/assets/product4.png"],
+    image: "/assets/Ramo de flores para aniversario, con rosas rojas, vino, ferrero , en Guayaquil..jpeg",
+    additionalImages: [
+      "/assets/Ramo de flores para aniversario, con rosas rojas, vino, ferrero , en Guayaquil..jpeg",
+      "/assets/product4.png",
+    ],
     isBestSeller: false,
     stock: 20,
     deliveryTime: "2-3 horas",
@@ -128,8 +135,11 @@ export const INITIAL_PRODUCTS: Product[] = [
     description: "Arreglo colorido con globos metalizados y flores mixtas. La mejor forma de desear un feliz día.",
     category: "Cumpleaños",
     price: "$40.00",
-    image: "/assets/product6.png",
-    additionalImages: ["/assets/product6.png"],
+    image: "/assets/Ramo de rosas con rosas rosadas para 15 años en Guayaquil.jpeg",
+    additionalImages: [
+      "/assets/Ramo de rosas con rosas rosadas para 15 años en Guayaquil.jpeg",
+      "/assets/product6.png",
+    ],
     isBestSeller: false,
     stock: 10,
     deliveryTime: "2-4 horas",

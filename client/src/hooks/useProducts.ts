@@ -14,6 +14,7 @@ function getImageUrl(imagePath: string | null | undefined): string {
     return PLACEHOLDER;
   }
   
+  if (imagePath.startsWith("data:image/")) return imagePath;
   if (imagePath.startsWith("http://") || imagePath.startsWith("https://")) return imagePath;
   const path = imagePath.startsWith("/") ? imagePath : `/${imagePath}`;
   const { assetBaseUrl } = getPublicAppConfig();

@@ -9,6 +9,11 @@ const IMG_URL = ADMIN_IMAGE_URL;
 export function getImageUrl(imagePath: string | null | undefined): string {
   if (!imagePath) return "/placeholder-image.svg";
   
+  // Soporta imagenes guardadas directamente en base de datos como data URL.
+  if (imagePath.startsWith("data:image/")) {
+    return imagePath;
+  }
+
   // Si ya es una URL completa (Cloudinary o externa)
   if (imagePath.startsWith("http://") || imagePath.startsWith("https://")) {
     return imagePath;

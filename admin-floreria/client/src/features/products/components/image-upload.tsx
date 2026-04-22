@@ -1,9 +1,8 @@
-import { useState, useRef } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/shared/components/ui/button";
 import { Input } from "@/shared/components/ui/input";
 import { toast } from "sonner";
-import { Upload, X, Image as ImageIcon } from "lucide-react";
-import productsService from "../api/products-service";
+import { X, Image as ImageIcon } from "lucide-react";
 import { getImageUrl } from "@/core/utils/variables";
 
 interface ImageUploadProps {
@@ -17,60 +16,43 @@ export default function ImageUpload({
   onChange,
   disabled,
 }: ImageUploadProps) {
-  const [isUploading, setIsUploading] = useState(false);
-  const [showUrlInput, setShowUrlInput] = useState(false);
-  const [urlInput, setUrlInput] = useState("");
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [urlInput, setUrlInput] = useState(value || "");
+  const [previewError, setPreviewError] = useState(false);
 
-  const handleFileUpload = async (
-    event: React.ChangeEvent<HTMLInputElement>
-  ) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
-    // Validaciones del lado del cliente
-    if (!file.type.startsWith("image/")) {
-      toast.error("Solo se permiten archivos de imagen");
-      return;
-    }
-
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error("El archivo es demasiado grande (máximo 5MB)");
-      return;
-    }
-
-    setIsUploading(true);
-    try {
-      const response = await productsService.uploadImage(file);
-      if (response.status === "success") {
-        onChange(response.url);
-        toast.success("Imagen subida exitosamente");
-      } else {
-        toast.error(response.error || "Error al subir la imagen");
-      }
-    } catch (error) {
-      console.error("Error uploading image:", error);
-      toast.error("Error al subir la imagen");
-    } finally {
-      setIsUploading(false);
-      // Limpiar el input file
-      if (fileInputRef.current) {
-        fileInputRef.current.value = "";
-      }
-    }
+  const looksLikeDirectImageUrl = (url: string) => {
+    if (url.startsWith("/")) return true;
+    if (url.startsWith("data:image/")) return true;
+    return /\.(avif|gif|jpe?g|png|svg|webp)(\?.*)?$/i.test(url);
   };
 
+  useEffect(() => {
+    setUrlInput(value || "");
+    setPreviewError(false);
+  }, [value]);
+
   const handleUrlSubmit = () => {
-    if (urlInput.trim()) {
-      onChange(urlInput.trim());
-      setUrlInput("");
-      setShowUrlInput(false);
-      toast.success("URL de imagen agregada");
+    const nextUrl = urlInput.trim();
+
+    if (!nextUrl) {
+      toast.error("Ingresa una URL de imagen");
+      return;
     }
+
+    onChange(nextUrl);
+
+    if (!looksLikeDirectImageUrl(nextUrl)) {
+      toast.warning(
+        "La URL parece ser una pagina y no una imagen directa. Usa un enlace que termine en .jpg, .png, .webp o similar."
+      );
+      return;
+    }
+
+    toast.success("URL de imagen agregada");
   };
 
   const removeImage = () => {
     onChange("");
+    setUrlInput("");
     toast.success("Imagen removida");
   };
 
@@ -80,14 +62,20 @@ export default function ImageUpload({
         Imagen del Producto
       </label>
 
-      {/* Vista previa de la imagen */}
       {value && (
         <div className="relative inline-block">
-          <img
-            src={getImageUrl(value)}
-            alt="Preview"
-            className="w-32 h-32 object-cover rounded-lg border"
-          />
+          {!previewError ? (
+            <img
+              src={getImageUrl(value)}
+              alt="Preview"
+              className="w-32 h-32 object-cover rounded-lg border"
+              onError={() => setPreviewError(true)}
+            />
+          ) : (
+            <div className="flex h-32 w-32 items-center justify-center rounded-lg border border-dashed px-3 text-center text-xs text-red-600">
+              La URL no apunta a una imagen directa
+            </div>
+          )}
           {!disabled && (
             <button
               type="button"
@@ -102,75 +90,33 @@ export default function ImageUpload({
 
       {!disabled && (
         <div className="space-y-3">
-          {/* Botones de acción */}
           <div className="flex gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => fileInputRef.current?.click()}
-              disabled={isUploading}
-              className="flex items-center gap-2"
-            >
-              {isUploading ? (
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current"></div>
-              ) : (
-                <Upload size={16} />
-              )}
-              {isUploading ? "Subiendo..." : "Subir Imagen"}
-            </Button>
-
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setShowUrlInput(!showUrlInput)}
-              className="flex items-center gap-2"
-            >
-              <ImageIcon size={16} />
-              URL
-            </Button>
-          </div>
-
-          {/* Input de archivo oculto */}
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/*"
-            onChange={handleFileUpload}
-            className="hidden"
-          />
-
-          {/* Input de URL */}
-          {showUrlInput && (
-            <div className="flex gap-2">
+            <div className="flex-1">
               <Input
                 placeholder="https://ejemplo.com/imagen.jpg"
                 value={urlInput}
                 onChange={(e) => setUrlInput(e.target.value)}
-                className="flex-1"
               />
-              <Button
-                type="button"
-                onClick={handleUrlSubmit}
-                disabled={!urlInput.trim()}
-              >
-                Agregar
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => {
-                  setShowUrlInput(false);
-                  setUrlInput("");
-                }}
-              >
-                Cancelar
-              </Button>
             </div>
-          )}
+            <Button
+              type="button"
+              onClick={handleUrlSubmit}
+              disabled={!urlInput.trim()}
+              className="flex items-center gap-2"
+            >
+              <ImageIcon size={16} />
+              Usar URL
+            </Button>
+          </div>
 
-          {/* Información adicional */}
           <p className="text-xs text-gray-500">
-            Formatos soportados: JPG, PNG, GIF. Tamaño máximo: 5MB
+            Pega la URL completa de la imagen para que se vea en el admin y en
+            la tienda.
+          </p>
+          <p className="text-xs text-amber-600">
+            Ejemplo valido: una URL directa que termine en `.jpg`, `.png`,
+            `.webp` o similar. Enlaces como `ibb.co/...` suelen ser paginas, no
+            la imagen real.
           </p>
         </div>
       )}
