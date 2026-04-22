@@ -1,13 +1,24 @@
-const cloudinary = require("../../lib/cloudinary");
-const streamifier = require("streamifier");
 const fs = require("fs");
+const minioClient = require("../../lib/s3Config");
 
-function isCloudinaryConfigured() {
-  return Boolean(
-    process.env.CLOUDINARY_CLOUD_NAME &&
-      process.env.CLOUDINARY_API_KEY &&
-      process.env.CLOUDINARY_API_SECRET
-  );
+const BUCKET_NAME = "difiori";
+const PUBLIC_BASE_URL = "http://66.94.98.69:9000";
+
+async function ensureBucketExists() {
+  const exists = await minioClient.bucketExists(BUCKET_NAME);
+  if (!exists) {
+    await minioClient.makeBucket(BUCKET_NAME, "us-east-1");
+  }
+}
+
+function sanitizeFileName(originalName = "") {
+  return originalName
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-zA-Z0-9._-]/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "")
+    .toLowerCase();
 }
 
 exports.uploadFile = async (req, res) => {
@@ -38,43 +49,37 @@ exports.uploadFile = async (req, res) => {
       });
     }
 
-    if (!isCloudinaryConfigured()) {
-      return res.status(500).json({
-        status: "error",
-        message:
-          "Cloudinary no esta configurado en el servidor. Agrega CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY y CLOUDINARY_API_SECRET en el archivo .env del API.",
-      });
-    }
+    await ensureBucketExists();
 
-    const uploadOptions = {
-      folder: isVideo ? "perfumeria/videos" : "perfumeria/products",
-      resource_type: "auto",
-    };
+    const folderName = isVideo ? "videos" : "images";
+    const safeName = sanitizeFileName(file.originalname || "archivo");
+    const objectName = `${folderName}/${Date.now()}-${safeName}`;
 
-    if (isImage) {
-      uploadOptions.transformation = [
-        { width: 1000, height: 1000, crop: "limit", quality: "auto" },
-      ];
-    }
+    await minioClient.putObject(
+      BUCKET_NAME,
+      objectName,
+      file.buffer,
+      file.size,
+      {
+        "Content-Type": file.mimetype,
+      }
+    );
 
-    const result = await new Promise((resolve, reject) => {
-      const uploadStream = cloudinary.uploader.upload_stream(
-        uploadOptions,
-        (error, uploadResult) => {
-          if (error) reject(error);
-          else resolve(uploadResult);
-        }
-      );
+    const objectPath = objectName
+      .split("/")
+      .map((segment) => encodeURIComponent(segment))
+      .join("/");
 
-      streamifier.createReadStream(file.buffer).pipe(uploadStream);
-    });
+    const fileUrl = `${PUBLIC_BASE_URL}/${BUCKET_NAME}/${objectPath}`;
 
     return res.status(200).json({
       status: "success",
-      url: result.secure_url,
-      public_id: result.public_id,
-      resource_type: result.resource_type,
-      message: isVideo ? "Video subido exitosamente" : "Imagen subida exitosamente",
+      url: fileUrl,
+      public_id: objectName,
+      resource_type: isVideo ? "video" : "image",
+      message: isVideo
+        ? "Video subido exitosamente a MinIO"
+        : "Imagen subida exitosamente a MinIO",
     });
   } catch (error) {
     console.error("Error uploading file:", error);
