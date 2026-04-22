@@ -1,5 +1,7 @@
+const { Prisma } = require("@prisma/client");
 const { db: prisma } = require("../../lib/prisma");
 const { orderEvents } = require("../../events/orderEvents");
+const minioClient = require("../../lib/s3Config");
 
 const orderSelect = {
   id: true,
@@ -67,13 +69,171 @@ const orderSelect = {
   },
 };
 
+const PAYMENT_PROOF_COLUMNS = [
+  "paymentProofImageUrl",
+  "paymentProofFileName",
+  "paymentProofStatus",
+  "paymentProofUploadedAt",
+  "paymentVerifiedAt",
+  "paymentVerifiedBy",
+  "paymentVerificationNotes",
+];
+
+let cachedPaymentProofColumns = null;
+
+function normalizeNoteLabel(label) {
+  return String(label || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim();
+}
+
+function extractPaymentProofFromNotes(notes) {
+  if (!notes) {
+    return {
+      paymentProofImageUrl: null,
+      paymentProofFileName: null,
+    };
+  }
+
+  const details = {};
+
+  String(notes)
+    .split("|")
+    .forEach((part) => {
+      const [rawLabel, ...valueParts] = part.split(":");
+      const value = valueParts.join(":").trim();
+      if (!rawLabel || !value) return;
+
+      const label = normalizeNoteLabel(rawLabel);
+      if (label === "comprobante url") {
+        details.paymentProofImageUrl = value;
+      }
+      if (label === "comprobante archivo") {
+        details.paymentProofFileName = value;
+      }
+    });
+
+  return {
+    paymentProofImageUrl: details.paymentProofImageUrl || null,
+    paymentProofFileName: details.paymentProofFileName || null,
+  };
+}
+
+function getPaymentProofProxyUrl(orderId, rawUrl) {
+  if (!orderId || !rawUrl) return null;
+  return `/api/orders/${orderId}/payment-proof/image`;
+}
+
+function parseMinioObjectFromUrl(fileUrl) {
+  if (!fileUrl) return null;
+
+  try {
+    const parsedUrl = new URL(fileUrl);
+    const pathnameParts = parsedUrl.pathname
+      .split("/")
+      .filter(Boolean)
+      .map((segment) => decodeURIComponent(segment));
+
+    if (pathnameParts.length < 2) return null;
+
+    return {
+      bucketName: pathnameParts[0],
+      objectName: pathnameParts.slice(1).join("/"),
+    };
+  } catch (error) {
+    return null;
+  }
+}
+
+async function getExistingPaymentProofColumns() {
+  if (cachedPaymentProofColumns) return cachedPaymentProofColumns;
+
+  try {
+    const rows = await prisma.$queryRaw`
+      SELECT column_name
+      FROM information_schema.columns
+      WHERE table_schema = 'public'
+        AND table_name = 'orders'
+        AND column_name IN (${Prisma.join(PAYMENT_PROOF_COLUMNS)})
+    `;
+
+    cachedPaymentProofColumns = new Set(rows.map((row) => row.column_name));
+  } catch (error) {
+    console.error("Payment proof column detection error:", error);
+    cachedPaymentProofColumns = new Set();
+  }
+
+  return cachedPaymentProofColumns;
+}
+
+async function getPaymentProofFields(orderId) {
+  const existingColumns = await getExistingPaymentProofColumns();
+  if (!existingColumns.has("paymentProofImageUrl")) {
+    return {
+      paymentProofImageUrl: null,
+      paymentProofFileName: null,
+      paymentProofStatus: null,
+      paymentProofUploadedAt: null,
+      paymentVerifiedAt: null,
+      paymentVerifiedBy: null,
+      paymentVerificationNotes: null,
+    };
+  }
+
+  try {
+    const rows = await prisma.$queryRaw`
+      SELECT
+        "paymentProofImageUrl",
+        "paymentProofFileName",
+        "paymentProofStatus",
+        "paymentProofUploadedAt",
+        "paymentVerifiedAt",
+        "paymentVerifiedBy",
+        "paymentVerificationNotes"
+      FROM "public"."orders"
+      WHERE "id" = ${orderId}
+      LIMIT 1
+    `;
+
+    return (
+      rows[0] || {
+        paymentProofImageUrl: null,
+        paymentProofFileName: null,
+        paymentProofStatus: null,
+        paymentProofUploadedAt: null,
+        paymentVerifiedAt: null,
+        paymentVerifiedBy: null,
+        paymentVerificationNotes: null,
+      }
+    );
+  } catch (error) {
+    console.error("Payment proof fetch error:", error);
+    return {
+      paymentProofImageUrl: null,
+      paymentProofFileName: null,
+      paymentProofStatus: null,
+      paymentProofUploadedAt: null,
+      paymentVerifiedAt: null,
+      paymentVerifiedBy: null,
+      paymentVerificationNotes: null,
+    };
+  }
+}
+
 function roundMoney(amount) {
   const n = Number(amount);
   if (!Number.isFinite(n)) return 0;
   return Math.round((n + Number.EPSILON) * 100) / 100;
 }
 
-function serializeOrder(order) {
+function serializeOrder(order, paymentProofFields = {}) {
+  const fallbackProofData = extractPaymentProofFromNotes(order.orderNotes);
+  const rawPaymentProofImageUrl =
+    paymentProofFields.paymentProofImageUrl || fallbackProofData.paymentProofImageUrl || null;
+  const rawPaymentProofFileName =
+    paymentProofFields.paymentProofFileName || fallbackProofData.paymentProofFileName || null;
   const totalAmount = Number(order.total || 0);
   const shipping = Number(order.shipping || 0);
   const subtotal = Number(order.subtotal || 0);
@@ -85,18 +245,94 @@ function serializeOrder(order) {
     ...order,
     description: null,
     notes: null,
-    paymentProofImageUrl: null,
-    paymentProofFileName: null,
-    paymentProofStatus: null,
-    paymentProofUploadedAt: null,
-    paymentVerifiedAt: null,
-    paymentVerifiedBy: null,
-    paymentVerificationNotes: null,
+    paymentProofImageUrl: getPaymentProofProxyUrl(order.id, rawPaymentProofImageUrl),
+    paymentProofRawUrl: rawPaymentProofImageUrl,
+    paymentProofFileName: rawPaymentProofFileName,
+    paymentProofStatus: paymentProofFields.paymentProofStatus || null,
+    paymentProofUploadedAt: paymentProofFields.paymentProofUploadedAt || null,
+    paymentVerifiedAt: paymentProofFields.paymentVerifiedAt || null,
+    paymentVerifiedBy: paymentProofFields.paymentVerifiedBy || null,
+    paymentVerificationNotes:
+      paymentProofFields.paymentVerificationNotes || null,
     totalAmount,
     estimatedDiscountAmount,
     pendingAmount,
   };
 }
+
+exports.getPaymentProofImage = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const order = await prisma.order.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        orderNumber: true,
+        orderNotes: true,
+      },
+    });
+
+    if (!order) {
+      return res.status(404).json({
+        status: "error",
+        message: "Orden no encontrada",
+      });
+    }
+
+    const paymentProofFields = await getPaymentProofFields(order.id);
+    const fallbackProofData = extractPaymentProofFromNotes(order.orderNotes);
+    const rawPaymentProofImageUrl =
+      paymentProofFields.paymentProofImageUrl || fallbackProofData.paymentProofImageUrl || null;
+
+    if (!rawPaymentProofImageUrl) {
+      return res.status(404).json({
+        status: "error",
+        message: "La orden no tiene comprobante guardado.",
+      });
+    }
+
+    const minioFile = parseMinioObjectFromUrl(rawPaymentProofImageUrl);
+    if (!minioFile) {
+      return res.status(400).json({
+        status: "error",
+        message: "La URL del comprobante no es valida.",
+      });
+    }
+
+    const stat = await minioClient.statObject(
+      minioFile.bucketName,
+      minioFile.objectName
+    );
+    const objectStream = await minioClient.getObject(
+      minioFile.bucketName,
+      minioFile.objectName
+    );
+
+    const contentType =
+      stat?.metaData?.["content-type"] ||
+      stat?.metaData?.["Content-Type"] ||
+      "application/octet-stream";
+
+    res.setHeader("Content-Type", contentType);
+    res.setHeader("Cache-Control", "public, max-age=300");
+    objectStream.on("error", (streamError) => {
+      console.error("Payment proof stream error:", streamError);
+      if (!res.headersSent) {
+        res.status(500).end("Error al leer el comprobante");
+      } else {
+        res.end();
+      }
+    });
+
+    return objectStream.pipe(res);
+  } catch (error) {
+    console.error("Get payment proof image error:", error);
+    return res.status(500).json({
+      status: "error",
+      message: "No se pudo obtener el comprobante.",
+    });
+  }
+};
 
 exports.getOrderById = async (req, res) => {
   try {
@@ -110,10 +346,12 @@ exports.getOrderById = async (req, res) => {
       return res.status(404).json({ error: "Orden no encontrada" });
     }
 
+    const paymentProofFields = await getPaymentProofFields(order.id);
+
     return res.status(200).json({
       status: "success",
       message: "Orden obtenida",
-      data: serializeOrder(order),
+      data: serializeOrder(order, paymentProofFields),
     });
   } catch (error) {
     console.error("Get order by id error:", error);
@@ -130,7 +368,10 @@ exports.updateOrderById = async (req, res) => {
       data,
       select: orderSelect,
     });
-    return res.status(200).json({ order: serializeOrder(order) });
+    const paymentProofFields = await getPaymentProofFields(order.id);
+    return res.status(200).json({
+      order: serializeOrder(order, paymentProofFields),
+    });
   } catch (error) {
     console.error("Update order by id error:", error);
     return res.status(500).json({ error: "Error al actualizar orden" });
@@ -179,10 +420,12 @@ exports.updateStateOrderById = async (req, res) => {
       updatedAt: new Date().toISOString(),
     });
 
+    const paymentProofFields = await getPaymentProofFields(order.id);
+
     return res.status(200).json({
       status: "success",
       message: "Estado actualizado correctamente",
-      data: { order: serializeOrder(order) },
+      data: { order: serializeOrder(order, paymentProofFields) },
     });
   } catch (error) {
     console.error("Update order status error:", error);
@@ -213,10 +456,12 @@ exports.updatePaymentStatus = async (req, res) => {
       select: orderSelect,
     });
 
+    const paymentProofFields = await getPaymentProofFields(order.id);
+
     return res.status(200).json({
       status: "success",
       message: "Estado de pago actualizado",
-      data: { order: serializeOrder(order) },
+      data: { order: serializeOrder(order, paymentProofFields) },
     });
   } catch (error) {
     console.error("Update payment status error:", error);
@@ -226,9 +471,87 @@ exports.updatePaymentStatus = async (req, res) => {
 
 exports.updatePaymentProof = async (req, res) => {
   try {
-    return res.status(501).json({
-      status: "error",
-      message: "La base actual no soporta campos de comprobante de pago todavia.",
+    const { id } = req.params;
+    const { paymentProofStatus, paymentVerificationNotes } = req.body;
+    const existingColumns = await getExistingPaymentProofColumns();
+
+    if (!existingColumns.has("paymentProofStatus")) {
+      return res.status(501).json({
+        status: "error",
+        message: "La base actual no soporta campos de comprobante de pago todavia.",
+      });
+    }
+
+    const validStatuses = ["PENDING", "UPLOADED", "VERIFIED", "REJECTED"];
+    if (!paymentProofStatus || !validStatuses.includes(paymentProofStatus)) {
+      return res.status(400).json({
+        status: "error",
+        message: "paymentProofStatus invalido.",
+      });
+    }
+
+    const notesValue =
+      typeof paymentVerificationNotes === "string"
+        ? paymentVerificationNotes
+        : null;
+    const verifiedAtValue =
+      paymentProofStatus === "VERIFIED" ? new Date() : null;
+
+    const assignments = [];
+    const values = [];
+
+    if (existingColumns.has("paymentProofStatus")) {
+      assignments.push(`"paymentProofStatus" = $${values.length + 1}`);
+      values.push(paymentProofStatus);
+    }
+
+    if (existingColumns.has("paymentVerificationNotes")) {
+      assignments.push(`"paymentVerificationNotes" = $${values.length + 1}`);
+      values.push(notesValue);
+    }
+
+    if (existingColumns.has("paymentVerifiedAt")) {
+      assignments.push(`"paymentVerifiedAt" = $${values.length + 1}`);
+      values.push(verifiedAtValue);
+    }
+
+    if (!assignments.length) {
+      return res.status(501).json({
+        status: "error",
+        message:
+          "La base actual no tiene columnas disponibles para actualizar el comprobante.",
+      });
+    }
+
+    values.push(id);
+
+    await prisma.$executeRawUnsafe(
+      `
+        UPDATE "public"."orders"
+        SET ${assignments.join(", ")}
+        WHERE "id" = $${values.length}
+      `,
+      ...values
+    );
+
+    const order = await prisma.order.findUnique({
+      where: { id },
+      select: orderSelect,
+    });
+
+    if (!order) {
+      return res.status(404).json({
+        status: "error",
+        message: "Orden no encontrada",
+      });
+    }
+
+    const paymentProofFields = await getPaymentProofFields(order.id);
+
+    return res.status(200).json({
+      status: "success",
+      message: "Comprobante actualizado correctamente.",
+      data: { order: serializeOrder(order, paymentProofFields) },
     });
   } catch (error) {
     console.error("Update payment proof error:", error);

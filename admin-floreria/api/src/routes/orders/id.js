@@ -4,6 +4,7 @@ const orderController = require("../../controllers/orders/idController");
 
 // Obtener orden por ID
 router.get("/:id", orderController.getOrderById);
+router.get("/:id/payment-proof/image", orderController.getPaymentProofImage);
 
 // Actualizar orden por ID
 router.put("/:id", orderController.updateOrderById);

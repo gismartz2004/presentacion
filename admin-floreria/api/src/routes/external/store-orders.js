@@ -2,11 +2,13 @@ const express = require("express");
 const crypto = require("crypto");
 const { Prisma } = require("@prisma/client");
 const { db: prisma } = require("../../lib/prisma");
-const cloudinary = require("../../lib/cloudinary");
+const minioClient = require("../../lib/s3Config");
 const emailService = require("../../services/emailService");
 const { buildStorefrontOrderDetails } = require("../../utils/storefrontOrderDetails");
 
 const router = express.Router();
+const PROOFS_BUCKET_NAME = "difiori";
+const PROOFS_PUBLIC_BASE_URL = "http://66.94.98.69:9000";
 
 function parseMoney(value) {
   const normalized = String(value ?? "")
@@ -15,6 +17,45 @@ function parseMoney(value) {
     .replace(",", ".");
   const amount = Number(normalized);
   return Number.isFinite(amount) ? amount : 0;
+}
+
+async function ensureProofsBucketExists() {
+  const exists = await minioClient.bucketExists(PROOFS_BUCKET_NAME);
+  if (!exists) {
+    await minioClient.makeBucket(PROOFS_BUCKET_NAME, "us-east-1");
+  }
+}
+
+function sanitizeFileName(originalName = "") {
+  return String(originalName || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-zA-Z0-9._-]/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "")
+    .toLowerCase();
+}
+
+function getExtensionFromMime(mimeType = "") {
+  const normalized = String(mimeType).toLowerCase();
+  if (normalized.includes("png")) return ".png";
+  if (normalized.includes("webp")) return ".webp";
+  if (normalized.includes("gif")) return ".gif";
+  if (normalized.includes("jpg") || normalized.includes("jpeg")) return ".jpg";
+  if (normalized.includes("pdf")) return ".pdf";
+  return "";
+}
+
+function parseDataUrl(dataUrl) {
+  const match = String(dataUrl).match(/^data:([^;]+);base64,(.+)$/);
+  if (!match) {
+    throw new Error("Formato de comprobante invalido");
+  }
+
+  return {
+    mimeType: match[1],
+    buffer: Buffer.from(match[2], "base64"),
+  };
 }
 
 /**
@@ -329,12 +370,30 @@ router.post("/:orderNumber/payment-proof", async (req, res) => {
       });
     }
 
-    const uploadResult = await cloudinary.uploader.upload(dataUrl, {
-      folder: "difiori/payment-proofs",
-      resource_type: "image",
-      public_id: `${order.orderNumber}-${Date.now()}`,
-      overwrite: true,
-    });
+    const { mimeType, buffer } = parseDataUrl(dataUrl);
+    const safeOriginalName = sanitizeFileName(fileName || "comprobante");
+    const extension =
+      safeOriginalName.includes(".")
+        ? ""
+        : getExtensionFromMime(mimeType);
+    const objectName = `payment-proofs/${order.orderNumber}-${Date.now()}-${safeOriginalName || "comprobante"}${extension}`;
+
+    await ensureProofsBucketExists();
+    await minioClient.putObject(
+      PROOFS_BUCKET_NAME,
+      objectName,
+      buffer,
+      buffer.length,
+      {
+        "Content-Type": mimeType,
+      }
+    );
+
+    const objectPath = objectName
+      .split("/")
+      .map((segment) => encodeURIComponent(segment))
+      .join("/");
+    const proofUrl = `${PROOFS_PUBLIC_BASE_URL}/${PROOFS_BUCKET_NAME}/${objectPath}`;
 
     // Compatibilidad: si la base no tiene columnas de comprobante, no rompemos la subida.
     let updatedOrder;
@@ -342,7 +401,7 @@ router.post("/:orderNumber/payment-proof", async (req, res) => {
       updatedOrder = await prisma.order.update({
         where: { id: order.id },
         data: {
-          paymentProofImageUrl: uploadResult.secure_url,
+          paymentProofImageUrl: proofUrl,
           paymentProofFileName: String(fileName || "comprobante"),
           paymentProofStatus: "UPLOADED",
           paymentProofUploadedAt: new Date(),
@@ -358,10 +417,32 @@ router.post("/:orderNumber/payment-proof", async (req, res) => {
       });
     } catch (updateError) {
       console.error("Payment proof DB compatibility warning:", updateError);
+
+      try {
+        const existingOrder = await prisma.order.findUnique({
+          where: { id: order.id },
+          select: { orderNotes: true },
+        });
+
+        const currentNotes = String(existingOrder?.orderNotes || "");
+        const cleanedNotes = currentNotes
+          .replace(/\s*\|\s*Comprobante URL:[^|]*/gi, "")
+          .replace(/\s*\|\s*Comprobante Archivo:[^|]*/gi, "")
+          .trim();
+        const fallbackNotes = `${cleanedNotes} | Comprobante URL: ${proofUrl} | Comprobante Archivo: ${String(fileName || "comprobante")}`.trim();
+
+        await prisma.order.update({
+          where: { id: order.id },
+          data: { orderNotes: fallbackNotes },
+        });
+      } catch (notesError) {
+        console.error("Payment proof orderNotes fallback warning:", notesError);
+      }
+
       updatedOrder = {
         id: order.id,
         orderNumber: order.orderNumber,
-        paymentProofImageUrl: uploadResult.secure_url,
+        paymentProofImageUrl: proofUrl,
         paymentProofStatus: "UPLOADED",
         paymentProofUploadedAt: new Date(),
       };

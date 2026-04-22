@@ -74,6 +74,26 @@ export default function useOrder() {
     }, 350);
   }, [statusFilter, rangeDateFilter, fecthOrderWithParams]);
 
+  const openOrder = useCallback(async (orderSummary: Order) => {
+    setSelectedOrder(orderSummary);
+
+    try {
+      const response = await ordersService.get_order(orderSummary.id);
+      const fullOrder = response?.data;
+      if (response?.status === "success" && fullOrder) {
+        setSelectedOrder(fullOrder);
+        setOrders(
+          orders.map((order) =>
+            order.id === fullOrder.id ? { ...order, ...fullOrder } : order
+          )
+        );
+      }
+    } catch (error) {
+      console.error("Fetch order detail error:", error);
+      toast.error("No se pudo cargar el detalle completo del pedido");
+    }
+  }, [orders, setOrders]);
+
   const updateOrderStatus = async (orderId: string, newStatus: string) => {
     try {
       const response = await ordersService.update_order_status(orderId, { status: newStatus });
@@ -242,6 +262,7 @@ export default function useOrder() {
     setDateFilterEnd,
     selectedOrder,
     setSelectedOrder,
+    openOrder,
     fecthOrderWithParams,
     fetchWithCurrentFilters,
     updateOrderStatus,

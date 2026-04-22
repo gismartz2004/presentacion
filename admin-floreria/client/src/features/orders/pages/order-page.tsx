@@ -26,9 +26,9 @@ export default function OrdersPage() {
     setDateFilterEnd,
     selectedOrder,
     setSelectedOrder,
+    openOrder,
     updateOrderStatus,
     updatePaymentStatus,
-    updatePaymentProof,
     bulkUpdateStatus,
     getStatusColor,
     getStatusText,
@@ -196,7 +196,7 @@ export default function OrdersPage() {
               getStatusText={getStatusText}
               getPaymentStatusColor={getPaymentStatusColor}
               getPaymentStatusText={getPaymentStatusText}
-              onOpen={(o: Order) => setSelectedOrder(o)}
+              onOpen={openOrder}
               onChangeStatus={updateOrderStatus}
               onMarkAsPaid={handleMarkAsPaid}
               statusOptions={statusOptions}
@@ -216,7 +216,6 @@ export default function OrdersPage() {
         getPaymentStatusColor={getPaymentStatusColor}
         getPaymentStatusText={getPaymentStatusText}
         onUpdatePaymentStatus={updatePaymentStatus}
-        onUpdatePaymentProof={updatePaymentProof}
         onChangeStatus={updateOrderStatus}
         statusOptions={statusOptions}
       />

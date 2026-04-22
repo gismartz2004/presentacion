@@ -486,8 +486,18 @@ export default function Checkout() {
       const data = await res.json();
 
       if (res.ok && data.status === "success") {
-        setOrderNumber(data.data?.orderNumber || "DIFIORI-OK");
+        const createdOrderNumber = data.data?.orderNumber || "DIFIORI-OK";
+        setOrderNumber(createdOrderNumber);
         setOrderStatus("success");
+        if (
+          (paymentMethod === "Banco" || paymentMethod === "Zelle") &&
+          selectedProofFile
+        ) {
+          await uploadPaymentProofForOrder(
+            createdOrderNumber,
+            selectedProofFile
+          );
+        }
         clearCart();
       } else {
         setErrorMsg(
@@ -506,8 +516,11 @@ export default function Checkout() {
     }
   };
 
-  const uploadPaymentProof = async () => {
-    if (!orderNumber || !selectedProofFile) {
+  const uploadPaymentProofForOrder = async (
+    targetOrderNumber: string,
+    proofFile: File
+  ) => {
+    if (!targetOrderNumber || !proofFile) {
       setProofMessage("Selecciona una imagen del comprobante antes de subir.");
       return;
     }
@@ -516,15 +529,15 @@ export default function Checkout() {
     setProofMessage("");
 
     try {
-      const dataUrl = await readFileAsDataUrl(selectedProofFile);
+      const dataUrl = await readFileAsDataUrl(proofFile);
       const response = await fetch(
-        `/api/external/store-orders/${encodeURIComponent(orderNumber)}/payment-proof`,
+        `/api/external/store-orders/${encodeURIComponent(targetOrderNumber)}/payment-proof`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            fileName: selectedProofFile.name,
-            mimeType: selectedProofFile.type,
+            fileName: proofFile.name,
+            mimeType: proofFile.type,
             dataUrl,
           }),
         }
@@ -548,6 +561,15 @@ export default function Checkout() {
     } finally {
       setIsUploadingProof(false);
     }
+  };
+
+  const uploadPaymentProof = async () => {
+    if (!orderNumber || !selectedProofFile) {
+      setProofMessage("Selecciona una imagen del comprobante antes de subir.");
+      return;
+    }
+
+    await uploadPaymentProofForOrder(orderNumber, selectedProofFile);
   };
 
   if (orderStatus === "success") {
@@ -581,45 +603,6 @@ export default function Checkout() {
             Hemos recibido tu pedido. El vendedor se pondra en contacto contigo.
             Esperamos tu respuesta.
           </p>
-          {(paymentMethod === "Banco" || paymentMethod === "Zelle") && (
-            <div className="bg-[#FBF7FD] border border-dashed border-[#B58CCC] rounded-2xl p-6 mb-8 text-left">
-              <p className="text-[#4A3362] text-sm font-bold mb-2">
-                {paymentMethod === "Banco" ? "Instrucciones de transferencia:" : "Pago por Zelle:"}
-              </p>
-              {paymentMethod === "Banco" ? (
-                <pre className="whitespace-pre-wrap text-[#5A3F73] text-sm font-sans">
-                  {transferInstructions}
-                </pre>
-              ) : (
-                <p className="text-[#5A3F73] text-sm">
-                  El vendedor confirmara los datos de Zelle y validara el pago con tu comprobante.
-                </p>
-              )}
-              <p className="text-[#6B5487] text-xs mt-4 mb-2">
-                Sube aqui tu comprobante para que aparezca en el panel admin:
-              </p>
-              <input
-                type="file"
-                accept="image/*"
-                onChange={(e) =>
-                  setSelectedProofFile(e.target.files?.[0] || null)
-                }
-                className="block w-full text-xs text-[#5A3F73] file:mr-3 file:rounded-xl file:border-0 file:bg-[#5A3F73] file:px-4 file:py-2 file:text-white"
-              />
-              <button
-                onClick={uploadPaymentProof}
-                disabled={!selectedProofFile || isUploadingProof}
-                className="mt-4 w-full bg-[#5A3F73] hover:bg-[#4A3362] disabled:opacity-50 text-white py-3 rounded-2xl font-black text-sm transition-all"
-              >
-                {isUploadingProof
-                  ? "Subiendo comprobante..."
-                  : "Subir comprobante"}
-              </button>
-              {proofMessage && (
-                <p className="text-[#5A3F73] text-xs mt-3">{proofMessage}</p>
-              )}
-            </div>
-          )}
           <Link href="/">
             <button className="w-full bg-[#5A3F73] hover:bg-[#4A3362] text-white py-5 rounded-3xl font-black text-base transition-all shadow-xl">
               Volver a la tienda
@@ -1118,7 +1101,7 @@ export default function Checkout() {
                           {transferInstructions}
                         </pre>
                         <p className="mt-4 text-sm font-medium text-[#6B5487]">
-                          Despues de confirmar podras subir el comprobante y quedara visible en el admin.
+                          Puedes adjuntar el comprobante aqui. Cuando confirmes el pedido se subira automaticamente y el admin lo vera en la orden.
                         </p>
                       </>
                     )}
@@ -1156,9 +1139,38 @@ export default function Checkout() {
                             Pago por Zelle
                           </p>
                           <p className="mt-1 text-sm font-medium text-[#6B5487]">
-                            Registraremos tu pedido y el vendedor compartira o confirmara los datos de pago.
+                            Registraremos tu pedido y el vendedor compartira o confirmara los datos de pago. Si ya tienes el comprobante, adjuntalo aqui para subirlo automaticamente al confirmar.
                           </p>
                         </div>
+                      </div>
+                    )}
+                    {(paymentMethod === "Banco" || paymentMethod === "Zelle") && (
+                      <div className="mt-6 rounded-2xl border border-[#DCC5E8] bg-white p-4">
+                        <p className="text-sm font-bold text-[#4A3362]">
+                          Comprobante de pago
+                        </p>
+                        <p className="mt-1 text-xs font-medium text-[#6B5487]">
+                          Selecciona la imagen del comprobante. Al confirmar el pedido se guardara automaticamente para que el admin pueda verlo.
+                        </p>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={(e) => {
+                            setSelectedProofFile(e.target.files?.[0] || null);
+                            setProofMessage("");
+                          }}
+                          className="mt-4 block w-full text-xs text-[#5A3F73] file:mr-3 file:rounded-xl file:border-0 file:bg-[#5A3F73] file:px-4 file:py-2 file:text-white"
+                        />
+                        <p className="mt-3 text-xs font-semibold text-[#5A3F73]">
+                          {selectedProofFile
+                            ? `Archivo listo: ${selectedProofFile.name}`
+                            : "Aun no has seleccionado un comprobante."}
+                        </p>
+                        {proofMessage && (
+                          <p className="mt-2 text-xs text-[#5A3F73]">
+                            {proofMessage}
+                          </p>
+                        )}
                       </div>
                     )}
                   </motion.div>
