@@ -53,11 +53,11 @@ export function ProductCard({ product }: ProductCardProps) {
           {product.name}
         </h3>
         
-        <div className="flex flex-wrap justify-center gap-2 mb-6 opacity-60">
+        {/* <div className="flex flex-wrap justify-center gap-2 mb-6 opacity-60">
            {product.size && (
              <span className="rounded-full bg-muted px-3 py-1 text-[9px] font-bold uppercase tracking-wider">{product.size}</span>
            )}
-        </div>
+        </div> */}
 
         <div className="mt-auto" itemProp="offers" itemScope itemType="https://schema.org/Offer">
           <meta itemProp="priceCurrency" content="USD" />

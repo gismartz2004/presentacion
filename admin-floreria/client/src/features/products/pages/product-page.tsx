@@ -88,7 +88,7 @@ export default function ProductsPage() {
       )}
 
       <div className="overflow-y-auto max-h-[calc(100vh-280px)] mt-4 pt-2 pb-2 px-1">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
           {products.map((product) => (
             <ProductCard
               key={product.id}
