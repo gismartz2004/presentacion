@@ -139,7 +139,7 @@ export default function CmsHomeEditor() {
       if (form.id === 0) {
         await service.post("/cms/home", { ...form, lang });
       } else {
-        await service.put(`/cms/home/${form.id}`, { ...form, lang });
+        await service.put(`/cms/home/${lang}`, { ...form, lang });
       }
       toast.success("Cambios guardados exitosamente");
     } catch (error) {

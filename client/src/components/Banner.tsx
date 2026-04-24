@@ -5,6 +5,7 @@ import { Link } from "wouter";
 import { cn } from "@/lib/utils";
 import { useCMS } from "@/hooks/useCMS";
 import { DEFAULT_COMPANY } from "@/lib/site";
+import { getPublicAppConfig } from "@/lib/runtime-config";
 
 const DEFAULT_SLIDES = [
   {
@@ -23,6 +24,24 @@ const DEFAULT_SLIDES = [
   }
 ];
 
+function normalizeHeroImageUrl(image: unknown) {
+  const rawUrl =
+    typeof image === "string"
+      ? image
+      : image && typeof image === "object" && "url" in image
+        ? String((image as { url?: unknown }).url || "")
+        : "";
+  const url = rawUrl.trim();
+
+  if (!url) return "";
+  if (url.startsWith("data:image/")) return url;
+  if (url.startsWith("http://") || url.startsWith("https://")) return url;
+
+  const path = url.startsWith("/") ? url : `/${url}`;
+  const { assetBaseUrl } = getPublicAppConfig();
+  return assetBaseUrl ? `${assetBaseUrl}${path}` : path;
+}
+
 export function Banner() {
   const [selectedIndex, setSelectedIndex] = useState(0);
   const { data: cms, isLoading } = useCMS();
@@ -31,7 +50,9 @@ export function Banner() {
   const slides = React.useMemo(() => {
     if (!cms) return DEFAULT_SLIDES;
     
-    const imageUrls = Array.isArray(cms.images) ? cms.images : [];
+    const imageUrls = Array.isArray(cms.images)
+      ? cms.images.map(normalizeHeroImageUrl).filter(Boolean)
+      : [];
     
     if (imageUrls.length === 0) return DEFAULT_SLIDES;
 
@@ -54,14 +75,14 @@ export function Banner() {
 
   if (isLoading) {
     return (
-      <div className="h-[68vh] min-h-[520px] md:h-[76vh] bg-[#111] flex items-center justify-center">
+      <div className="h-[78vh] min-h-[640px] md:h-[88vh] bg-[#111] flex items-center justify-center">
         <Loader2 className="w-10 h-10 animate-spin text-white/20" />
       </div>
     );
   }
 
   return (
-    <div className="relative h-[68vh] min-h-[520px] md:h-[76vh] bg-[#111] overflow-hidden group/banner">
+    <div className="relative h-[78vh] min-h-[640px] md:h-[88vh] bg-[#111] overflow-hidden group/banner">
       {/* Cinematic Crossfade Background */}
       <div className="absolute inset-0 w-full h-full">
         <AnimatePresence>
@@ -92,10 +113,17 @@ export function Banner() {
                 loading="eager"
                 decoding="async"
                 fetchPriority="high"
-                className="w-full h-full object-cover object-center md:object-[center_42%] contrast-[1.15] saturate-[1.1] brightness-[0.85]"
+                className="h-full w-full object-cover object-center contrast-[1.15] saturate-[1.1] brightness-[0.85]"
               />
             )}
             {/* Base Overlay to guarantee text readability */}
+            <div className="absolute inset-0 -z-10 bg-[#111]" />
+            <img
+              src={slides[selectedIndex].image}
+              alt=""
+              aria-hidden="true"
+              className="absolute inset-0 -z-10 h-full w-full object-cover object-center blur-2xl scale-110 opacity-45"
+            />
             <div className="absolute inset-0 bg-black/30" />
             <div className="absolute inset-0 bg-gradient-to-t from-[#111111]/95 via-[#111111]/30 to-transparent opacity-90" />
           </motion.div>

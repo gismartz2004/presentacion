@@ -1,5 +1,5 @@
 import type { DehydratedState } from "@tanstack/react-query";
-import { createRoot, hydrateRoot } from "react-dom/client";
+import { createRoot } from "react-dom/client";
 import App from "./App";
 import "./index.css";
 
@@ -17,8 +17,4 @@ if (!rootElement) {
 
 const app = <App dehydratedState={window.__REACT_QUERY_STATE__} />;
 
-if (rootElement.hasChildNodes()) {
-  hydrateRoot(rootElement, app);
-} else {
-  createRoot(rootElement).render(app);
-}
+createRoot(rootElement).render(app);

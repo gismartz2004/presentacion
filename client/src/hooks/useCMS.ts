@@ -8,9 +8,9 @@ export interface HomeHero {
   id: number;
   title: string;
   description: string;
-  images: string[] | any; // Puede venir como Array o JSON string depende de como se guardó
+  images: Array<string | { url?: string; alt?: string }> | any;
   videoUrl?: string;
-  backgroundType: "image" | "video";
+  backgroundType: "image" | "video" | "carousel";
 }
 
 export async function fetchHomeHero(baseUrl?: string): Promise<HomeHero | null> {
