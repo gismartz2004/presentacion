@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { Button } from "@/shared/components/ui/button";
 import { Input } from "@/shared/components/ui/input";
 import { ArrowDown, ArrowUp, Plus, Star, Trash2 } from "lucide-react";
@@ -40,6 +41,14 @@ export default function ProductForm({
   removeVariant,
   setShowModal,
 }: ProductFormProps) {
+  const [priceInput, setPriceInput] = useState(
+    formData.price > 0 ? String(formData.price) : ""
+  );
+
+  useEffect(() => {
+    setPriceInput(formData.price > 0 ? String(formData.price) : "");
+  }, [formData.price]);
+
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <div>
@@ -78,13 +87,15 @@ export default function ProductForm({
             type="number"
             step="0.01"
             min="0"
-            value={formData.price}
-            onChange={(e) =>
+            value={priceInput}
+            onChange={(e) => {
+              const nextValue = e.target.value;
+              setPriceInput(nextValue);
               setFormData({
                 ...formData,
-                price: parseFloat(e.target.value) || 0,
-              })
-            }
+                price: nextValue === "" ? 0 : parseFloat(nextValue) || 0,
+              });
+            }}
             required={!formData.hasVariants}
             placeholder="0.00"
           />
