@@ -224,19 +224,14 @@ export function Navbar() {
         </AnimatePresence>
       </nav>
 
-      <motion.a
-        initial={{ opacity: 0, y: 30, scale: 0.7 }}
-        animate={{ opacity: 1, y: 0, scale: 1 }}
-        transition={{ delay: 1, duration: 1.5, ease: [0.23, 1, 0.32, 1] }}
-        whileHover={{ scale: 1.1, y: -10 }}
-        whileTap={{ scale: 0.9 }}
+      <a
         href={`https://wa.me/${DEFAULT_COMPANY.phoneDigits}`}
         target="_blank"
         rel="noopener noreferrer"
         aria-label="Contactar por WhatsApp"
-        className="group fixed bottom-8 right-8 z-[100] flex h-[60px] w-[60px] items-center justify-center rounded-full border border-white/20 bg-[#25D366] shadow-[0_20px_50px_rgba(37,211,102,0.35)] transition-all duration-700 hover:bg-[#1ebe5d] hover:shadow-[0_30px_60px_rgba(37,211,102,0.48)]"
+        className="group fixed bottom-8 right-8 z-[100] flex h-[60px] w-[60px] items-center justify-center rounded-full border border-white/20 bg-[#25D366] shadow-[0_20px_50px_rgba(37,211,102,0.35)] transition-colors duration-300 hover:bg-[#1ebe5d] hover:shadow-[0_24px_54px_rgba(37,211,102,0.4)]"
       >
-        <div className="relative flex h-7 w-7 items-center justify-center transition-transform duration-500 group-hover:scale-110">
+        <div className="relative flex h-7 w-7 items-center justify-center">
           <svg
             viewBox="0 0 24 24"
             className="h-full w-full drop-shadow-lg"
@@ -252,7 +247,7 @@ export function Navbar() {
             />
           </svg>
         </div>
-      </motion.a>
+      </a>
     </>
   );
 }

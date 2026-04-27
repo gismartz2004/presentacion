@@ -3,6 +3,37 @@ const { db: prisma } = require('../../lib/prisma');
 
 const router = express.Router();
 
+function normalizeText(value) {
+  return String(value || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .trim()
+    .toLowerCase();
+}
+
+function looksLikeGhostProduct(product) {
+  const name = String(product?.name || '').trim();
+  const normalizedName = normalizeText(name);
+  const description = normalizeText(product?.description || '');
+  const category = normalizeText(product?.category || '');
+  const price = Number(product?.price || 0);
+
+  if (!name || normalizedName.length < 5) return true;
+  if (price > 0 && price < 5) return true;
+  if (description.length < 12) return true;
+  if (!category || category === 'general') return true;
+  if (!/[aeiou]/i.test(name)) return true;
+
+  const suspiciousTokens = ['test', 'prueba', 'demo', 'tmp', 'fake', 'ghost'];
+  if (suspiciousTokens.some((token) => normalizedName.includes(token))) return true;
+
+  const wordCount = normalizedName.split(/\s+/).filter(Boolean).length;
+  const hasVeryShortWords = normalizedName.split(/\s+/).some((word) => word.length <= 2);
+  if (wordCount >= 2 && hasVeryShortWords && price <= 10) return true;
+
+  return false;
+}
+
 /**
  * GET /api/external/products
  * Route pública para que la tienda pueda obtener productos activos.
@@ -27,7 +58,9 @@ router.get('/', async (req, res) => {
       orderBy: [{ featured: 'desc' }, { createdAt: 'desc' }],
     });
 
-    const data = products.map((p) => {
+    const data = products
+      .filter((p) => !looksLikeGhostProduct(p))
+      .map((p) => {
       const defaultVariant = p.variants.find((v) => v.isDefault) || p.variants[0];
       const price = p.hasVariants ? defaultVariant?.price : p.price;
 
@@ -70,11 +103,12 @@ router.get('/categories', async (req, res) => {
   try {
     const categories = await prisma.product.findMany({
       where: { isActive: true, isDeleted: false },
-      select: { category: true },
+      select: { name: true, description: true, category: true, price: true },
       distinct: ['category'],
     });
 
     const data = categories
+      .filter((product) => !looksLikeGhostProduct(product))
       .map((c) => c.category)
       .filter((c) => c && c.trim() !== "");
 

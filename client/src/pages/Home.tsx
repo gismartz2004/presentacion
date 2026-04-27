@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
-import { motion, Variants, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { Star, Instagram, Facebook, Music2, Mail, MessageSquare, Phone } from "lucide-react";
 import { Link } from "wouter";
 import { Banner } from "@/components/Banner";
@@ -13,6 +13,10 @@ import { useCompany } from "@/hooks/useCompany";
 import { useReviews, useCreateReview } from "@/hooks/useReviews";
 import { Seo } from "@/components/Seo";
 import { DEFAULT_COMPANY, absoluteUrl } from "@/lib/site";
+import { formatCategoryDisplayName, getCategoryPath } from "@shared/catalog";
+
+const HOME_PRODUCTS_PER_CATEGORY = 2;
+const HOME_CATEGORY_LIMIT = 4;
 
 export default function Home() {
   const reviewsSectionRef = useRef<HTMLElement | null>(null);
@@ -43,6 +47,25 @@ export default function Home() {
   // Productos y Datos desde la API real
   const { data: allProducts = [], isLoading: isLoadingAll } = useProducts();
   const { data: company } = useCompany();
+  const categorySections = React.useMemo(() => {
+    const sections = new Map<string, typeof allProducts>();
+
+    for (const product of allProducts) {
+      const category = product.category || "General";
+      const existing = sections.get(category) || [];
+      existing.push(product);
+      sections.set(category, existing);
+    }
+
+    return Array.from(sections.entries())
+      .map(([category, products]) => ({
+        category,
+        label: formatCategoryDisplayName(category),
+        href: getCategoryPath(category),
+        products: products.slice(0, HOME_PRODUCTS_PER_CATEGORY),
+      }))
+      .slice(0, HOME_CATEGORY_LIMIT);
+  }, [allProducts]);
 
   useEffect(() => {
     if (shouldLoadReviews) return;
@@ -66,15 +89,6 @@ export default function Home() {
     observer.observe(target);
     return () => observer.disconnect();
   }, [shouldLoadReviews]);
-
-  const sectionVariants: Variants = {
-    hidden: { opacity: 0, y: 50 },
-    visible: { 
-      opacity: 1, 
-      y: 0,
-      transition: { duration: 1.2, ease: "easeOut" }
-    }
-  };
 
   const companyPhoneDisplay = company?.phone || DEFAULT_COMPANY.phoneDisplay;
   const companyPhoneDigits = companyPhoneDisplay.replace(/[^0-9]/g, "") || DEFAULT_COMPANY.phoneDigits;
@@ -125,25 +139,14 @@ export default function Home() {
       {/* 1. Header is in App.tsx/Navbar.tsx */}
       
       {/* 2. Banner Section */}
-      <motion.section 
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ duration: 1.5 }}
-        className="relative pt-24 lg:pt-28"
-      >
+      <section className="relative pt-24 lg:pt-28">
         <Banner />
-      </motion.section>
+      </section>
 
       <div className="mx-auto w-full max-w-[1600px] px-6 py-20 relative z-20 xl:px-10">
         
         {/* Main Content: Sidebar + Catalog */}
-        <motion.section 
-          variants={sectionVariants}
-          initial="hidden"
-          whileInView="visible"
-          viewport={{ once: true, margin: "-100px" }}
-          className="relative z-20 flex flex-col gap-10 pt-10 mb-40 lg:flex-row xl:gap-8"
-        >
+        <section className="relative z-20 flex flex-col gap-10 pt-10 mb-40 lg:flex-row xl:gap-8">
           <aside className="h-fit shrink-0 lg:sticky lg:top-32 lg:w-[280px] xl:w-[300px]">
             <CategorySidebar variant="link" />
           </aside>
@@ -158,15 +161,37 @@ export default function Home() {
               <div className="h-[1px] flex-1 bg-foreground"></div>
             </div>
 
-            <div id="product-list" className="product-grid scroll-mt-32">
+            <div id="product-list" className="space-y-20 scroll-mt-32">
               {isLoadingAll ? (
                 // Skeleton loading state (minimal)
                 Array(6).fill(0).map((_, i) => (
                   <div key={i} className="product-skeleton" />
                 ))
-              ) : allProducts.length > 0 ? (
-                allProducts.map((product) => (
-                  <ProductCard key={product.id} product={product} />
+              ) : categorySections.length > 0 ? (
+                categorySections.map((section) => (
+                  <section key={section.category} className="space-y-8">
+                    <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+                      <div>
+                        <h2 className="text-3xl font-black leading-tight text-[#4B1F6F] md:text-5xl" style={{ fontFamily: '"Arial Black", Arial, sans-serif' }}>
+                          {section.label}
+                        </h2>
+                        <p className="mt-2 max-w-2xl text-base leading-relaxed text-[#4B1F6F]/75 md:text-lg">
+                          Selección destacada de {section.label.toLowerCase()} con entrega en Guayaquil.
+                        </p>
+                      </div>
+                      <Link href={section.href}>
+                        <button type="button" className="ui-btn-secondary">
+                          Ver categoría
+                        </button>
+                      </Link>
+                    </div>
+
+                    <div className="product-grid">
+                      {section.products.map((product) => (
+                        <ProductCard key={product.id} product={product} />
+                      ))}
+                    </div>
+                  </section>
                 ))
               ) : (
                 <div className="empty-state col-span-full">
@@ -185,17 +210,13 @@ export default function Home() {
               </Link>
             </div>
           </main>
-        </motion.section>
+        </section>
 
         {/* REVIEWS SECTION */}
-        <motion.section 
+        <section 
           id="testimonios"
           ref={reviewsSectionRef}
-          variants={sectionVariants}
-          initial="hidden"
-          whileInView="visible"
-          viewport={{ once: true, margin: "-100px" }}
-          className="relative left-1/2 right-1/2 mb-32 w-screen -translate-x-1/2 border-y border-[#DECDF0] bg-[#F4ECFB] px-6 py-20 sm:px-10"
+          className="deferred-section relative left-1/2 right-1/2 mb-32 w-screen -translate-x-1/2 border-y border-[#DECDF0] bg-[#F4ECFB] px-6 py-20 sm:px-10"
         >
            <div className="absolute -top-10 left-1/2 -translate-x-1/2 w-1 h-20 bg-gradient-to-b from-transparent to-primary/20" />
            
@@ -303,15 +324,11 @@ export default function Home() {
                   </div>
                )}
             </div>
-        </motion.section>
+        </section>
 
-        <motion.section
+        <section
           id="faq"
-          variants={sectionVariants}
-          initial="hidden"
-          whileInView="visible"
-          viewport={{ once: true, margin: "-100px" }}
-          className="mb-40"
+          className="deferred-section mb-40"
         >
           <div className="text-center mb-16">
             <h2 className="text-4xl font-black leading-tight text-[#4B1F6F] md:text-6xl" style={{ fontFamily: '"Arial Black", Arial, sans-serif' }}>Preguntas frecuentes</h2>
@@ -328,17 +345,14 @@ export default function Home() {
               </article>
             ))}
           </div>
-        </motion.section>
+        </section>
 
       </div>
 
       {/* FOOTER MULTI-SECTION PROFESSIONAL */}
-      <motion.footer 
+      <footer 
         id="contacto"
-        initial={{ opacity: 0 }}
-        whileInView={{ opacity: 1 }}
-        transition={{ duration: 1.5 }}
-        className="border-t border-[#DECDF0] bg-[#F4ECFB] px-6 pt-44 pb-14"
+        className="deferred-section border-t border-[#DECDF0] bg-[#F4ECFB] px-6 pt-44 pb-14"
       >
         <div className="container mx-auto">
            <div className="mb-36 grid grid-cols-1 gap-24 md:grid-cols-2 lg:grid-cols-4">
@@ -418,7 +432,7 @@ export default function Home() {
               </div>
            </div>
         </div>
-      </motion.footer>
+      </footer>
     </main>
   );
 }

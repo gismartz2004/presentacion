@@ -243,7 +243,7 @@ export default function ProductDetails() {
               </div>
             </div>
 
-            <p className="product-description-strong mb-12 max-w-xl border-l-4 border-[#5A3F73] pl-8">
+            <p className="product-description-strong mb-10 max-w-2xl">
               "{product.description}"
             </p>
 
