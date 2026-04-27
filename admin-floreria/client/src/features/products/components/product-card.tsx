@@ -20,6 +20,7 @@ type ProductCardProps = {
   // handleShow: (product?: Product) => void;
   handleSubmit: (e: React.FormEvent) => void;
   formData: FormData;
+  categorySuggestions: string[];
   setFormData: React.Dispatch<
     React.SetStateAction<ProductCardProps["formData"]>
   >;
@@ -78,6 +79,7 @@ export function ProductCard({
   setOpen,
   handleSubmit,
   formData,
+  categorySuggestions,
   setFormData,
   variants,
   setVariants,
@@ -173,6 +175,7 @@ export function ProductCard({
               handleShow={handleEdit}
               handleSubmit={handleSubmit}
               formData={formData}
+              categorySuggestions={categorySuggestions}
               setFormData={setFormData}
               variants={variants}
               setVariants={setVariants}

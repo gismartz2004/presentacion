@@ -2,7 +2,6 @@ import React from "react";
 import { Product } from "@/data/mock";
 import { Link } from "wouter";
 import { Loader2, MessageSquare, ShoppingBag } from "lucide-react";
-import { motion } from "framer-motion";
 import { useCart } from "@/context/CartContext";
 import { DEFAULT_COMPANY } from "@/lib/site";
 import { formatCategoryDisplayName, getProductPath } from "@shared/catalog";
@@ -24,7 +23,7 @@ export function ProductCard({ product }: ProductCardProps) {
   };
 
   return (
-    <motion.article
+    <article
       className="surface-card group flex h-full flex-col overflow-hidden border-[#DECDF0] transition-all duration-500"
       itemScope itemType="https://schema.org/Product"
     >
@@ -91,6 +90,6 @@ export function ProductCard({ product }: ProductCardProps) {
           </a>
         </div>
       </div>
-    </motion.article>
+    </article>
   );
 }
