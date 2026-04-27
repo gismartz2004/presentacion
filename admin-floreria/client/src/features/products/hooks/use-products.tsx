@@ -3,10 +3,12 @@ import { toast } from "sonner";
 import type { FormData, Product, Variant } from "../types";
 import productsService from "../api/products-service";
 import { useUserStore } from "@/store/use-user-store";
+import filtersService from "@/features/filters/api/filters-service";
 
 export default function useProducts() {
   const { user } = useUserStore();
   const [products, setProducts] = useState<Product[]>([]);
+  const [categorySuggestions, setCategorySuggestions] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [showModal, setShowModal] = useState(false);
@@ -25,6 +27,27 @@ export default function useProducts() {
 
   const [variants, setVariants] = useState<Array<Variant>>([]);
 
+  const syncCategorySuggestions = (
+    productList: Product[],
+    filterLabels: string[] = []
+  ) => {
+    const merged = new Set<string>();
+
+    filterLabels.forEach((label) => {
+      const normalized = label.trim();
+      if (normalized) merged.add(normalized);
+    });
+
+    productList.forEach((product) => {
+      const normalized = product.category?.trim();
+      if (normalized) merged.add(normalized);
+    });
+
+    setCategorySuggestions(
+      Array.from(merged).sort((a, b) => a.localeCompare(b, "es"))
+    );
+  };
+
   const fetchProducts = async () => {
     try {
       const params = new URLSearchParams();
@@ -35,6 +58,7 @@ export default function useProducts() {
 
       if (status === "success" && data) {
         setProducts(data || []);
+        syncCategorySuggestions(data || [], categorySuggestions);
       } else {
         toast.error(message || "Error al cargar productos");
       }
@@ -49,6 +73,24 @@ export default function useProducts() {
   useEffect(() => {
     fetchProducts();
   }, [search]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    const fetchCategorySuggestions = async () => {
+      try {
+        const response = await filtersService.getCategories();
+        if (response.status === "success" && response.data) {
+          const filterLabels = response.data
+            .map((category) => category.label?.trim() || category.name?.trim() || "")
+            .filter(Boolean);
+          syncCategorySuggestions(products, filterLabels);
+        }
+      } catch (error) {
+        console.error("Fetch category suggestions error:", error);
+      }
+    };
+
+    fetchCategorySuggestions();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -217,6 +259,7 @@ export default function useProducts() {
     products,
     search,
     isLoading,
+    categorySuggestions,
     formData,
     variants,
     showModal,

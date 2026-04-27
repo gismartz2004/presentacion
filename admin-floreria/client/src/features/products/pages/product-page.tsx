@@ -9,6 +9,7 @@ export default function ProductsPage() {
     products,
     search,
     isLoading,
+    categorySuggestions,
     formData,
     variants,
     showModal,
@@ -63,6 +64,7 @@ export default function ProductsPage() {
           handleShow={() => handleNew()}
           handleSubmit={handleSubmit}
           formData={formData}
+          categorySuggestions={categorySuggestions}
           setFormData={setFormData}
           variants={variants}
           setVariants={setVariants}
@@ -99,6 +101,7 @@ export default function ProductsPage() {
               setOpen={setShowModal}
               handleSubmit={handleSubmit}
               formData={formData}
+              categorySuggestions={categorySuggestions}
               setFormData={setFormData}
               variants={variants}
               setVariants={setVariants}

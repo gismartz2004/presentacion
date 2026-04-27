@@ -3,7 +3,6 @@ import { Link, useLocation } from "wouter";
 import { useCategories } from "@/hooks/useCategories";
 import { cn } from "@/lib/utils";
 import { ChevronDown, Filter, Loader2 } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
 import {
   BEST_SELLERS_CATEGORY_NAME,
   formatCategoryDisplayName,
@@ -87,50 +86,43 @@ export function CategorySidebar({
           <ChevronDown className={cn("h-6 w-6 shrink-0 text-[#6F4D95] transition-transform duration-500", isOpen && "rotate-180")} />
         </button>
 
-        <AnimatePresence>
-          {isOpen && (
-            <motion.div
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-              className="absolute top-full left-0 w-full bg-white shadow-2xl border border-primary/20 rounded-2xl mt-3 z-40 overflow-hidden"
-            >
-              {mobileOptions.map((option, index) =>
-                isFilter ? (
-                  <button
-                    key={option.label}
-                    className={cn(
-                      "w-full text-left p-5 hover:bg-primary/10 transition-colors text-[1.2rem] font-black leading-snug border-b border-primary/5",
-                      index === mobileOptions.length - 1 && "last:border-0",
-                      activeCategory === option.value ? "text-[#4B1F6F] bg-primary/5" : "text-[#4B1F6F]",
-                    )}
-                    style={{ fontFamily: '"Arial Black", Arial, sans-serif' }}
-                    onClick={() => handleFilterSelection(option.value)}
-                  >
-                    {option.label}
-                  </button>
-                ) : (
-                  <Link
-                    key={option.label}
-                    href={option.href}
-                    onClick={(event) => {
-                      event.preventDefault();
-                      handleLinkSelection(option.href);
-                    }}
-                    className={cn(
-                      "block w-full text-left p-5 hover:bg-primary/10 transition-colors text-[1.2rem] font-black leading-snug border-b border-primary/5",
-                      index === mobileOptions.length - 1 && "last:border-0",
-                      activeCategory === option.value ? "text-[#4B1F6F] bg-primary/5" : "text-[#4B1F6F]",
-                    )}
-                    style={{ fontFamily: '"Arial Black", Arial, sans-serif' }}
-                  >
-                    {option.label}
-                  </Link>
-                ),
-              )}
-            </motion.div>
-          )}
-        </AnimatePresence>
+        {isOpen ? (
+          <div className="absolute top-full left-0 z-40 mt-3 w-full overflow-hidden rounded-2xl border border-primary/20 bg-white shadow-2xl">
+            {mobileOptions.map((option, index) =>
+              isFilter ? (
+                <button
+                  key={option.label}
+                  className={cn(
+                    "w-full text-left p-5 hover:bg-primary/10 transition-colors text-[1.2rem] font-black leading-snug border-b border-primary/5",
+                    index === mobileOptions.length - 1 && "last:border-0",
+                    activeCategory === option.value ? "text-[#4B1F6F] bg-primary/5" : "text-[#4B1F6F]",
+                  )}
+                  style={{ fontFamily: '"Arial Black", Arial, sans-serif' }}
+                  onClick={() => handleFilterSelection(option.value)}
+                >
+                  {option.label}
+                </button>
+              ) : (
+                <Link
+                  key={option.label}
+                  href={option.href}
+                  onClick={(event) => {
+                    event.preventDefault();
+                    handleLinkSelection(option.href);
+                  }}
+                  className={cn(
+                    "block w-full text-left p-5 hover:bg-primary/10 transition-colors text-[1.2rem] font-black leading-snug border-b border-primary/5",
+                    index === mobileOptions.length - 1 && "last:border-0",
+                    activeCategory === option.value ? "text-[#4B1F6F] bg-primary/5" : "text-[#4B1F6F]",
+                  )}
+                  style={{ fontFamily: '"Arial Black", Arial, sans-serif' }}
+                >
+                  {option.label}
+                </Link>
+              ),
+            )}
+          </div>
+        ) : null}
       </div>
 
       <div className="surface-card sticky top-32 hidden max-h-[calc(100vh-10rem)] flex-col gap-4 overflow-hidden p-6 lg:flex">

@@ -1,12 +1,10 @@
 import React, { useEffect, useRef, useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
 import { Star, Instagram, Facebook, Music2, Mail, MessageSquare, Phone } from "lucide-react";
 import { Link } from "wouter";
 import { Banner } from "@/components/Banner";
 import { CategorySidebar } from "@/components/CategorySidebar";
 import { cn } from "@/lib/utils";
 import { ProductCard } from "@/components/ProductCard";
-import { Logo } from "@/components/Logo";
 import { FAQS } from "@/data/mock";
 import { useProducts } from "@/hooks/useProducts";
 import { useCompany } from "@/hooks/useCompany";
@@ -234,14 +232,8 @@ export default function Home() {
                </button>
             </div>
 
-            <AnimatePresence>
-              {showForm && (
-                <motion.div 
-                  initial={{ opacity: 0, height: 0 }}
-                  animate={{ opacity: 1, height: "auto" }}
-                  exit={{ opacity: 0, height: 0 }}
-                  className="max-w-xl mx-auto mb-20 overflow-hidden"
-                >
+            {showForm ? (
+                <div className="mx-auto mb-20 max-w-xl overflow-hidden">
                   <form onSubmit={handleAddReview} className="surface-card space-y-6 p-8">
                     <div className="flex justify-center gap-2 mb-4">
                       {[1, 2, 3, 4, 5].map((star) => (
@@ -282,9 +274,8 @@ export default function Home() {
                       {createReviewMutation.isPending ? "Publicando..." : "Publicar Reseña"}
                     </button>
                   </form>
-                </motion.div>
-              )}
-            </AnimatePresence>
+                </div>
+            ) : null}
 
             {reviewMessage ? (
               <p className="mx-auto mb-10 max-w-xl rounded-2xl border border-primary/15 bg-white/70 px-5 py-4 text-center text-sm font-semibold text-foreground/70">
@@ -297,13 +288,9 @@ export default function Home() {
                   <div className="col-span-full text-center py-10 opacity-30">Cargando experiencias...</div>
                ) : dbReviews.length > 0 ? (
                  dbReviews.map((review, i) => (
-                   <motion.div 
+                   <div 
                      key={review.id || i}
-                     initial={{ opacity: 0, y: 20 }}
-                     whileInView={{ opacity: 1, y: 0 }}
-                     whileHover={{ y: -8 }}
-                     transition={{ duration: 0.5 }}
-                     className="surface-card group relative p-8 sm:p-10"
+                     className="surface-card group relative p-8 transition-transform duration-300 hover:-translate-y-1 sm:p-10"
                    >
                       <div className="flex gap-1 mb-6 opacity-40 group-hover:opacity-100 transition-opacity duration-700">
                          {[...Array(review.stars)].map((_, s) => <Star key={s} className="w-5 h-5 fill-accent text-accent" />)}
@@ -316,7 +303,7 @@ export default function Home() {
                             <span className="text-[1rem] font-black uppercase tracking-[0.12em] text-[#4B1F6F]" style={{ fontFamily: '"Arial Black", Arial, sans-serif' }}>{review.role || "Cliente"}</span>
                          </div>
                       </div>
-                   </motion.div>
+                   </div>
                  ))
                ) : (
                   <div className="col-span-full text-center py-20 italic font-serif text-foreground/60 text-2xl">

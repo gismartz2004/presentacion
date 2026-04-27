@@ -1,5 +1,4 @@
-import React, { useState, useEffect } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import React, { useEffect, useMemo, useState } from "react";
 import { ArrowRight, Loader2, MessageCircle } from "lucide-react";
 import { Link } from "wouter";
 import { cn } from "@/lib/utils";
@@ -11,17 +10,17 @@ const DEFAULT_SLIDES = [
   {
     image: "/assets/banner_collage.jpg",
     title: "Sorprende hoy. Nosotros lo entregamos por ti.",
-    subtitle: "Historias reales de alegría en Guayaquil",
+    subtitle: "Historias reales de alegria en Guayaquil",
     cta: "Ver testimonios",
     href: "/#testimonios",
   },
   {
-    image: "https://images.unsplash.com/photo-1508784411316-02b8cd4d3a3a?q=80&w=2000&auto=format&fit=crop",
+    image: "/assets/banner_collage.jpg",
     title: "Entregas reales personas reales.",
     subtitle: "Entrega en Guayaquil en horas",
     cta: "Comprar ahora",
     href: "/shop",
-  }
+  },
 ];
 
 function normalizeHeroImageUrl(image: unknown) {
@@ -46,194 +45,115 @@ export function Banner() {
   const [selectedIndex, setSelectedIndex] = useState(0);
   const { data: cms, isLoading } = useCMS();
 
-  // Mapear los datos del CMS al formato de slides
-  const slides = React.useMemo(() => {
+  const slides = useMemo(() => {
     if (!cms) return DEFAULT_SLIDES;
-    
+
     const imageUrls = Array.isArray(cms.images)
       ? cms.images.map(normalizeHeroImageUrl).filter(Boolean)
       : [];
-    
+
     if (imageUrls.length === 0) return DEFAULT_SLIDES;
 
     return imageUrls.map((img: string) => ({
       image: img,
       title: cms.title || "DIFIORI",
-      subtitle: cms.description || "Diseñando emociones",
+      subtitle: cms.description || "Disenando emociones",
       cta: "Comprar ahora",
       href: "/shop",
     }));
   }, [cms]);
 
   const activeSlide = slides[selectedIndex] || DEFAULT_SLIDES[0];
+  const shouldAutoplay = Boolean(cms && slides.length > 1);
 
   useEffect(() => {
-    if (slides.length <= 1) return;
-    const timer = setInterval(() => {
+    if (!shouldAutoplay) return;
+
+    const timer = window.setInterval(() => {
       setSelectedIndex((prev) => (prev + 1) % slides.length);
-    }, 8000);
-    return () => clearInterval(timer);
-  }, [slides]);
+    }, 12000);
+
+    return () => window.clearInterval(timer);
+  }, [shouldAutoplay, slides.length]);
 
   if (isLoading) {
     return (
-      <div className="h-[78vh] min-h-[640px] md:h-[88vh] bg-[#111] flex items-center justify-center">
-        <Loader2 className="w-10 h-10 animate-spin text-white/20" />
+      <div className="flex h-[72vh] min-h-[560px] items-center justify-center bg-[#111] md:h-[82vh]">
+        <Loader2 className="h-10 w-10 animate-spin text-white/20" />
       </div>
     );
   }
 
   return (
-    <div className="relative h-[78vh] min-h-[640px] md:h-[88vh] bg-[#111] overflow-hidden group/banner">
-      {/* Cinematic Crossfade Background */}
-      <div className="absolute inset-0 w-full h-full">
-        <AnimatePresence>
-          <motion.div
-            key={selectedIndex}
-            initial={{ opacity: 0, scale: 1.05 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 1.8, ease: "easeInOut" }}
-            className="absolute inset-0 w-full h-full"
-          >
-            {cms?.backgroundType === "video" && cms?.videoUrl ? (
-              <video 
-                src={cms.videoUrl} 
-                autoPlay 
-                muted 
-                loop 
-                playsInline
-                className="w-full h-full object-cover grayscale-[0.2] brightness-[0.7]"
-              />
-            ) : (
-              <motion.img 
-                src={activeSlide.image} 
-                alt={`Florería DIFIORI - ${activeSlide.title}`}
-                initial={{ scale: 1.15 }}
-                animate={{ scale: 1 }}
-                transition={{ duration: 25, ease: "linear" }}
-                loading="eager"
-                decoding="async"
-                fetchPriority="high"
-                sizes="100vw"
-                className="h-full w-full object-cover object-center contrast-[1.15] saturate-[1.1] brightness-[0.85]"
-              />
-            )}
-            {/* Base Overlay to guarantee text readability */}
-            <div className="absolute inset-0 -z-10 bg-[#111]" />
-            <div className="absolute inset-0 bg-black/30" />
-            <div className="absolute inset-0 bg-gradient-to-t from-[#111111]/95 via-[#111111]/30 to-transparent opacity-90" />
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.08),transparent_40%),linear-gradient(135deg,rgba(17,17,17,0.12),rgba(17,17,17,0.5))]" />
-          </motion.div>
-        </AnimatePresence>
-      </div>
+    <section className="relative overflow-hidden bg-[#111]">
+      <div className="relative h-[72vh] min-h-[560px] md:h-[82vh]">
+        <img
+          src={activeSlide.image}
+          alt={`Floreria DIFIORI - ${activeSlide.title}`}
+          loading="eager"
+          decoding="async"
+          fetchPriority="high"
+          sizes="100vw"
+          className="absolute inset-0 h-full w-full object-cover object-center brightness-[0.86]"
+        />
 
-      {/* Static UI Overlay - Stays in place perfectly without bounds stretching */}
-      <div className="absolute inset-0 pointer-events-none flex flex-col justify-end pb-8 md:pb-10 z-20">
-        
-        {/* Vertical Slide Indicator - Left Side */}
-        <div className="absolute left-10 lg:left-20 top-1/2 -translate-y-1/2 hidden md:flex flex-col items-center gap-6 pointer-events-auto mix-blend-overlay">
-          <span className="text-white/80 font-serif italic text-sm">
-            {String(selectedIndex + 1).padStart(2, '0')}
-          </span>
-          <div className="w-[1px] h-24 bg-white/20 relative overflow-hidden">
-            <motion.div 
-              className="absolute top-0 left-0 w-full bg-white transition-all duration-700"
-              style={{ height: `${((selectedIndex + 1) / slides.length) * 100}%` }}
-            />
-          </div>
-          <span className="text-white/40 font-serif italic text-sm">
-            {String(slides.length).padStart(2, '0')}
-          </span>
-        </div>
+        <div className="absolute inset-0 bg-black/32" />
+        <div className="absolute inset-0 bg-gradient-to-t from-[#111111]/95 via-[#111111]/34 to-transparent" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.08),transparent_42%),linear-gradient(135deg,rgba(17,17,17,0.08),rgba(17,17,17,0.42))]" />
 
-        {/* Minimalist Top Tag */}
-        <div className="hidden">
-           <AnimatePresence mode="wait">
-             <motion.div
-               key={selectedIndex}
-               initial={{ opacity: 0, y: 10 }}
-               animate={{ opacity: 1, y: 0 }}
-               exit={{ opacity: 0, y: -10 }}
-               transition={{ duration: 0.6 }}
-               className="inline-flex items-center gap-4 px-6 py-2 border border-white/20 rounded-full backdrop-blur-md bg-white/5"
-             >
-               <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
-               <span className="text-[9px] font-black uppercase tracking-[0.4em] text-white/90">
-                 Colección {selectedIndex === 0 ? "Exclusiva" : "Temporada"}
-               </span>
-             </motion.div>
-           </AnimatePresence>
-        </div>
-        
-        <div className="relative z-20 w-full px-10 md:px-20 lg:px-40 pointer-events-auto">
-          <div className="flex flex-col items-center md:items-start max-w-2xl gap-10">
-            {/* Title Fade */}
-             <AnimatePresence mode="wait">
-                <motion.div
-                  key={selectedIndex}
-                  initial={{ opacity: 0, filter: "blur(10px)", y: 20 }}
-                  animate={{ opacity: 1, filter: "blur(0px)", y: 0 }}
-                  exit={{ opacity: 0, filter: "blur(10px)", y: -20 }}
-                  transition={{ duration: 0.8, ease: "easeOut" }}
-                  className="text-center md:text-left"
+        <div className="relative z-10 flex h-full items-end pb-10 md:pb-14">
+          <div className="w-full px-8 md:px-16 lg:px-28 xl:px-36">
+            <div className="max-w-3xl text-center md:text-left">
+              <div className="mb-5 inline-flex rounded-full border border-white/16 bg-white/8 px-4 py-2 text-[10px] font-black uppercase tracking-[0.28em] text-white/85 backdrop-blur-sm">
+                DIFIORI Guayaquil
+              </div>
+              <h2 className="text-4xl font-semibold leading-[0.94] tracking-tight text-white md:text-6xl lg:text-7xl">
+                {activeSlide.title}
+              </h2>
+              <p className="mt-5 max-w-2xl text-lg italic leading-relaxed text-white/72 md:text-2xl">
+                {activeSlide.subtitle}
+              </p>
+
+              <div className="mt-8 flex flex-col items-center gap-4 sm:flex-row md:items-start">
+                <Link
+                  href={activeSlide.href}
+                  className="inline-flex min-h-[56px] min-w-[220px] items-center justify-center gap-3 rounded-full bg-accent px-8 py-4 text-sm font-black uppercase tracking-[0.2em] text-white shadow-lg shadow-[#3D2852]/30 transition-colors hover:bg-[#4A3362]"
                 >
-                  <h2 className="text-4xl md:text-6xl lg:text-7xl font-serif text-white mb-5 leading-none tracking-tight">
-                    {activeSlide.title}
-                  </h2>
-                  <p className="text-white/60 font-serif italic text-xl md:text-2xl">
-                    {activeSlide.subtitle}
-                  </p>
-                </motion.div>
-             </AnimatePresence>
+                  {activeSlide.cta}
+                  <ArrowRight className="h-4 w-4" />
+                </Link>
 
-            <div className="flex flex-col sm:flex-row gap-6 items-center">
-              <Link href={activeSlide.href} className="group relative flex min-h-[58px] min-w-[240px] items-center justify-center gap-4 overflow-hidden rounded-full bg-accent px-12 py-5 text-sm font-black uppercase tracking-[0.22em] text-white shadow-lg shadow-[#3D2852]/30 transition-all hover:-translate-y-0.5 hover:bg-[#4A3362] hover:shadow-xl hover:shadow-[#3D2852]/35">
-                <div className="absolute inset-0 translate-y-[100%] bg-white/10 transition-transform duration-500 ease-[cubic-bezier(0.25,1,0.5,1)] group-hover:translate-y-0" />
-                <AnimatePresence mode="wait">
-                  <motion.span
-                    key={selectedIndex}
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    transition={{ duration: 0.4 }}
-                    className="relative z-10 flex items-center gap-4 text-white transition-colors duration-500"
-                  >
-                    {activeSlide.cta}
-                    <ArrowRight className="h-4 w-4" />
-                  </motion.span>
-                </AnimatePresence>
-              </Link>
-              
-              <a 
-                href={`https://wa.me/${DEFAULT_COMPANY.phoneDigits}`}
-                target="_blank" 
-                rel="noopener noreferrer"
-                className="group inline-flex min-h-[58px] items-center justify-center gap-3 rounded-full border border-[#25D366]/30 bg-[#25D366] px-8 py-5 text-sm font-black uppercase tracking-[0.22em] text-white shadow-[0_18px_42px_rgba(37,211,102,0.28)] transition-all hover:-translate-y-0.5 hover:bg-[#1ebe5d] hover:shadow-[0_24px_52px_rgba(37,211,102,0.36)]"
-              >
-                <MessageCircle className="h-6 w-6" />
-                WhatsApp
-              </a>
+                <a
+                  href={`https://wa.me/${DEFAULT_COMPANY.phoneDigits}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex min-h-[56px] items-center justify-center gap-3 rounded-full border border-[#25D366]/30 bg-[#25D366] px-8 py-4 text-sm font-black uppercase tracking-[0.2em] text-white shadow-[0_18px_42px_rgba(37,211,102,0.28)] transition-colors hover:bg-[#1ebe5d]"
+                >
+                  <MessageCircle className="h-5 w-5" />
+                  WhatsApp
+                </a>
+              </div>
             </div>
-          </div>
 
-          {/* Minimalist Progress Indicator (Mobile) */}
-          <div className="md:hidden mt-10 flex justify-center gap-4 opacity-70">
-             {slides.map((_, i) => (
-               <button
-                 key={i}
-                 type="button"
-                 aria-label={`Ver banner ${i + 1}`}
-                 onClick={() => setSelectedIndex(i)}
-                 className={cn(
-                   "h-[1px] transition-all duration-1000", 
-                   selectedIndex === i ? "w-12 bg-white" : "w-4 bg-white/30"
-                 )} 
-               />
-             ))}
+            {slides.length > 1 ? (
+              <div className="mt-8 flex justify-center gap-3 opacity-80 md:justify-start">
+                {slides.map((_, index) => (
+                  <button
+                    key={index}
+                    type="button"
+                    aria-label={`Ver banner ${index + 1}`}
+                    onClick={() => setSelectedIndex(index)}
+                    className={cn(
+                      "h-[3px] rounded-full transition-all duration-300",
+                      selectedIndex === index ? "w-12 bg-white" : "w-5 bg-white/35",
+                    )}
+                  />
+                ))}
+              </div>
+            ) : null}
           </div>
         </div>
       </div>
-    </div>
+    </section>
   );
 }

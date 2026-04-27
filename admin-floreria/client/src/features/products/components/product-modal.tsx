@@ -30,6 +30,7 @@ type ProductModalProps = {
   handleShow: (product?: Product) => void;
   handleSubmit: (e: React.FormEvent) => void;
   formData: FormData;
+  categorySuggestions: string[];
   setFormData: React.Dispatch<
     React.SetStateAction<ProductModalProps["formData"]>
   >;
@@ -55,6 +56,7 @@ export function ProductModal({
   handleShow,
   handleSubmit,
   formData,
+  categorySuggestions,
   setFormData,
   variants,
   setVariants,
@@ -89,6 +91,7 @@ export function ProductModal({
           </DialogHeader>
           <ProductForm
             formData={formData}
+            categorySuggestions={categorySuggestions}
             variants={variants}
             editingProduct={typeform === "edit"}
             handleSubmit={handleSubmit}
@@ -123,6 +126,7 @@ export function ProductModal({
         <ProductForm
           handleSubmit={handleSubmit}
           formData={formData}
+          categorySuggestions={categorySuggestions}
           setFormData={setFormData}
           variants={variants}
           setVariants={setVariants}

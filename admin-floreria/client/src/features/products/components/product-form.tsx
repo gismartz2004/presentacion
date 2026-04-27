@@ -9,6 +9,7 @@ import { Textarea } from "@/shared/components/ui/textarea";
 type ProductFormProps = {
   handleSubmit: (e: React.FormEvent) => void;
   formData: FormData;
+  categorySuggestions: string[];
   setFormData: React.Dispatch<
     React.SetStateAction<ProductFormProps["formData"]>
   >;
@@ -31,6 +32,7 @@ type ProductFormProps = {
 export default function ProductForm({
   handleSubmit,
   formData,
+  categorySuggestions,
   setFormData,
   variants,
   setVariants,
@@ -49,18 +51,21 @@ export default function ProductForm({
     setPriceInput(formData.price > 0 ? String(formData.price) : "");
   }, [formData.price]);
 
+  const quickCategories = categorySuggestions.slice(0, 8);
+
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <div>
-        <label className="block text-sm font-medium mb-1">Nombre</label>
+        <label className="mb-1 block text-sm font-medium">Nombre</label>
         <Input
           value={formData.name}
           onChange={(e) => setFormData({ ...formData, name: e.target.value })}
           required
         />
       </div>
+
       <div>
-        <label className="block text-sm font-medium mb-1">Descripción</label>
+        <label className="mb-1 block text-sm font-medium">Descripcion</label>
         <Textarea
           value={formData.description}
           onChange={(e) =>
@@ -69,20 +74,80 @@ export default function ProductForm({
           rows={3}
         />
       </div>
-      <div>
-        <label className="block text-sm font-medium mb-1">Categoría / Etiqueta</label>
-        <Input
-          value={formData.category}
-          onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-          placeholder="Ej: Rosas, Girasoles, San Valentín..."
-          required
-        />
+
+      <div className="space-y-3">
+        <div>
+          <label className="mb-1 block text-sm font-medium">Categoria</label>
+          {categorySuggestions.length > 0 ? (
+            <select
+              value={
+                categorySuggestions.includes(formData.category)
+                  ? formData.category
+                  : ""
+              }
+              onChange={(e) =>
+                setFormData({ ...formData, category: e.target.value })
+              }
+              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background"
+            >
+              <option value="">Selecciona una categoria guardada</option>
+              {categorySuggestions.map((category) => (
+                <option key={category} value={category}>
+                  {category}
+                </option>
+              ))}
+            </select>
+          ) : null}
+        </div>
+
+        <div>
+          <Input
+            list="product-category-suggestions"
+            value={formData.category}
+            onChange={(e) =>
+              setFormData({ ...formData, category: e.target.value })
+            }
+            placeholder="Escribe o elige una categoria"
+            required
+          />
+          <datalist id="product-category-suggestions">
+            {categorySuggestions.map((category) => (
+              <option key={category} value={category} />
+            ))}
+          </datalist>
+          <p className="mt-2 text-xs text-gray-500">
+            Puedes elegir una categoria existente o escribir una nueva.
+          </p>
+        </div>
+
+        {quickCategories.length > 0 ? (
+          <div>
+            <p className="mb-2 text-xs font-medium uppercase tracking-wide text-gray-500">
+              Accesos rapidos
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {quickCategories.map((category) => (
+                <button
+                  key={category}
+                  type="button"
+                  onClick={() => setFormData({ ...formData, category })}
+                  className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
+                    formData.category === category
+                      ? "border-primary bg-primary text-primary-foreground"
+                      : "border-gray-200 bg-gray-50 text-gray-700 hover:bg-gray-100"
+                  }`}
+                >
+                  {category}
+                </button>
+              ))}
+            </div>
+          </div>
+        ) : null}
       </div>
 
-      {/* Campo de precio - Solo para productos SIN variantes */}
       {!formData.hasVariants && (
         <div>
-          <label className="block text-sm font-medium mb-1">Precio ($)</label>
+          <label className="mb-1 block text-sm font-medium">Precio ($)</label>
           <Input
             type="number"
             step="0.01"
@@ -101,12 +166,14 @@ export default function ProductForm({
           />
         </div>
       )}
+
       <div>
         <ImageUpload
           value={formData.image}
           onChange={(url) => setFormData({ ...formData, image: url })}
         />
       </div>
+
       <div className="flex items-center space-x-2">
         <input
           type="checkbox"
@@ -117,6 +184,7 @@ export default function ProductForm({
         />
         <label className="text-sm font-medium">Producto activo</label>
       </div>
+
       <div className="flex items-center space-x-2">
         <input
           type="checkbox"
@@ -127,6 +195,7 @@ export default function ProductForm({
         />
         <label className="text-sm font-medium">Producto destacado</label>
       </div>
+
       <div className="flex items-center space-x-2">
         <input
           type="checkbox"
@@ -142,50 +211,48 @@ export default function ProductForm({
         <label className="text-sm font-medium">Producto con variantes</label>
       </div>
 
-      {/* Mensaje informativo */}
-      <div className="text-sm text-gray-600 bg-blue-50 p-3 rounded-lg">
+      <div className="rounded-lg bg-blue-50 p-3 text-sm text-gray-600">
         {formData.hasVariants ? (
           <p>
-            ✨ <strong>Producto con variantes:</strong> Los precios se manejan
-            en cada variante individual. Agrega al menos una variante con su
+            <strong>Producto con variantes:</strong> Los precios se manejan en
+            cada variante individual. Agrega al menos una variante con su
             precio.
           </p>
         ) : (
           <p>
-            💰 <strong>Producto simple:</strong> Usa el campo "Precio" arriba
-            para establecer un precio fijo para este producto.
+            <strong>Producto simple:</strong> Usa el campo de precio para
+            establecer un valor fijo para este producto.
           </p>
         )}
       </div>
 
-      {/* Gestión de Variantes */}
       {formData.hasVariants && (
-        <div className="border rounded-lg p-4 space-y-4">
-          <div className="flex justify-between items-center">
-            <h3 className="text-lg font-medium">Variantes del Producto</h3>
+        <div className="space-y-4 rounded-lg border p-4">
+          <div className="flex items-center justify-between">
+            <h3 className="text-lg font-medium">Variantes del producto</h3>
             <Button
               type="button"
               size="sm"
               onClick={addVariant}
               className="flex items-center gap-2"
             >
-              <Plus className="w-4 h-4" />
+              <Plus className="h-4 w-4" />
               Agregar
             </Button>
           </div>
 
           {variants.length === 0 ? (
-            <div className="text-center py-4 text-gray-500">
+            <div className="py-4 text-center text-gray-500">
               <p>
-                No hay variantes. Agrega al menos una variante para productos
-                con variantes.
+                No hay variantes. Agrega al menos una variante para este
+                producto.
               </p>
             </div>
           ) : (
             <div className="space-y-3">
               {variants.map((variant, index) => (
-                <div key={index} className="border rounded-lg p-3 bg-gray-50">
-                  <div className="flex items-center gap-2 mb-3">
+                <div key={index} className="rounded-lg border bg-gray-50 p-3">
+                  <div className="mb-3 flex items-center gap-2">
                     <div className="flex items-center gap-1">
                       <Button
                         type="button"
@@ -196,7 +263,7 @@ export default function ProductForm({
                         }
                         disabled={index === 0}
                       >
-                        <ArrowUp className="w-3 h-3" />
+                        <ArrowUp className="h-3 w-3" />
                       </Button>
                       <Button
                         type="button"
@@ -210,7 +277,7 @@ export default function ProductForm({
                         }
                         disabled={index === variants.length - 1}
                       >
-                        <ArrowDown className="w-3 h-3" />
+                        <ArrowDown className="h-3 w-3" />
                       </Button>
                     </div>
 
@@ -222,8 +289,8 @@ export default function ProductForm({
                           updateVariant(index, "isDefault", e.target.checked)
                         }
                       />
-                      <label className="text-sm font-medium flex items-center gap-1">
-                        <Star className="w-3 h-3" />
+                      <label className="flex items-center gap-1 text-sm font-medium">
+                        <Star className="h-3 w-3" />
                         Por defecto
                       </label>
                     </div>
@@ -235,13 +302,13 @@ export default function ProductForm({
                       onClick={() => removeVariant(index)}
                       className="ml-auto text-red-600 hover:text-red-700"
                     >
-                      <Trash2 className="w-3 h-3" />
+                      <Trash2 className="h-3 w-3" />
                     </Button>
                   </div>
 
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <label className="block text-sm font-medium mb-1">
+                      <label className="mb-1 block text-sm font-medium">
                         Nombre
                       </label>
                       <Input
@@ -249,12 +316,12 @@ export default function ProductForm({
                         onChange={(e) =>
                           updateVariant(index, "name", e.target.value)
                         }
-                        placeholder="Ej: Pequeño, Mediano, Grande"
+                        placeholder="Ej: Pequeno, Mediano, Grande"
                         required={formData.hasVariants}
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium mb-1">
+                      <label className="mb-1 block text-sm font-medium">
                         Precio ($)
                       </label>
                       <Input
@@ -280,6 +347,7 @@ export default function ProductForm({
           )}
         </div>
       )}
+
       <div className="flex space-x-2 pt-4">
         <Button type="submit" className="flex-1">
           {editingProduct ? "Actualizar" : "Crear"}
