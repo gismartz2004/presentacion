@@ -28,11 +28,24 @@ router.post("/", async (req, res) => {
       couponCode,
       abandonedAt,
       source,
+      checkoutStep,
+      checkoutStepLabel,
+      abandonmentSessionId,
     } = req.body;
 
     if (!customerName || !phone || !items || items.length === 0) {
       return res.status(400).json({ status: "error", message: "Datos incompletos para notificacion de abandono" });
     }
+
+    const resolvedCheckoutStepLabel = checkoutStepLabel || (
+      checkoutStep === "sender"
+        ? "Datos de quien envia"
+        : checkoutStep === "receiver"
+          ? "Datos de quien recibe"
+          : checkoutStep === "payment"
+            ? "Metodo de pago"
+            : ""
+    );
 
     console.log(`Notificando carrito abandonado de: ${customerName} (${phone})`);
 
@@ -60,19 +73,23 @@ router.post("/", async (req, res) => {
       ? company.settings.paymentSettings || {}
       : {};
 
-    const recentDuplicate = await prisma.abandonedCart.findFirst({
-      where: {
-        companyId: company.id,
-        customerPhone: phone,
-        total: Number(total),
-        createdAt: {
-          gte: new Date(Date.now() - 10 * 60 * 1000),
-        },
-      },
-      orderBy: {
-        createdAt: "desc",
-      },
-    });
+    const normalizedSessionId = String(abandonmentSessionId || "").trim();
+    const recentDuplicate = normalizedSessionId
+      ? await prisma.abandonedCart.findFirst({
+          where: {
+            companyId: company.id,
+            notes: {
+              contains: `Abandono ID: ${normalizedSessionId}`,
+            },
+            createdAt: {
+              gte: new Date(Date.now() - 24 * 60 * 60 * 1000),
+            },
+          },
+          orderBy: {
+            createdAt: "desc",
+          },
+        })
+      : null;
 
     const abandonedCart = recentDuplicate || await prisma.abandonedCart.create({
       data: {
@@ -88,6 +105,8 @@ router.post("/", async (req, res) => {
         cardMessage: cardMessage || null,
         couponCode: couponCode || null,
         notes: [
+          normalizedSessionId ? `Abandono ID: ${normalizedSessionId}` : "",
+          resolvedCheckoutStepLabel ? `Paso abandonado: ${resolvedCheckoutStepLabel}` : "",
           senderEmail ? `Correo envia: ${senderEmail}` : "",
           senderPhone ? `Telefono envia: ${senderPhone}` : "",
           receiverPhone ? `Telefono recibe: ${receiverPhone}` : "",
@@ -124,7 +143,7 @@ router.post("/", async (req, res) => {
           observations,
           couponCode,
           abandonedAt,
-          source,
+          source: resolvedCheckoutStepLabel ? `${source || "CHECKOUT_WEB"} (${resolvedCheckoutStepLabel})` : source,
         })
       : true;
 

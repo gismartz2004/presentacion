@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ShoppingBag,
   ChevronLeft,
@@ -94,6 +94,12 @@ const PAYMENT_METHODS: {
     Icon: CreditCard,
   },
 ];
+
+const CHECKOUT_STEP_LABELS: Record<CheckoutStep, string> = {
+  sender: "Datos de quien envia",
+  receiver: "Datos de quien recibe",
+  payment: "Metodo de pago",
+};
 
 const DEFAULT_TRANSFER_INSTRUCTIONS = `Banco Pichincha cta ahorro # 2202306049
 Banco Pacifico cta ahorro # 0851179635
@@ -218,6 +224,18 @@ export default function Checkout() {
   const observationsRef = useRef<HTMLTextAreaElement>(null);
 
   const abandonmentSent = useRef(false);
+  const abandonmentSessionId = useRef(
+    `checkout-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`
+  );
+  const checkoutStateRef = useRef({
+    activeStep,
+    appliedCoupon,
+    cartTotal,
+    items,
+    orderStatus,
+    paymentMethod,
+    shippingCost: shippingResolution.cost,
+  });
 
   const readCheckoutFields = () => {
     const senderName = senderNameRef.current?.value.trim() || "";
@@ -246,73 +264,121 @@ export default function Checkout() {
   };
 
   useEffect(() => {
-    const handleAbandonment = () => {
-      if (
-        abandonmentSent.current ||
-        orderStatus === "success" ||
-        items.length === 0
-      ) {
-        return;
-      }
-
-      const {
-        senderName,
-        senderEmail,
-        senderPhone,
-        receiverName,
-        receiverPhone,
-        deliveryDateTime,
-        exactAddress,
-        sector,
-        cardMessage,
-        observations,
-      } = readCheckoutFields();
-
-      if (senderName || senderPhone) {
-        fetch("/api/external/store-orders/abandoned", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            customerName: senderName || "Cliente anonimo",
-            phone: senderPhone || "No proporcionado",
-            senderName: senderName || "",
-            senderEmail: senderEmail || "",
-            senderPhone: senderPhone || "",
-            receiverName: receiverName || "",
-            receiverPhone: receiverPhone || "",
-            exactAddress: exactAddress || "",
-            sector: sector || "Guayaquil",
-            paymentMethod,
-            deliveryDateTime: deliveryDateTime || "",
-            cardMessage: cardMessage || "",
-            observations: observations || "",
-            couponCode: appliedCoupon?.code || "",
-            abandonedAt: new Date().toISOString(),
-            source: "CHECKOUT_WEB",
-            items,
-            total:
-              cartTotal +
-              shippingResolution.cost -
-              (appliedCoupon
-                ? appliedCoupon.type === "PERCENTAGE"
-                  ? cartTotal * appliedCoupon.percent_value
-                  : appliedCoupon.amount || 0
-                : 0),
-          }),
-          keepalive: true,
-        });
-        abandonmentSent.current = true;
-      }
+    checkoutStateRef.current = {
+      activeStep,
+      appliedCoupon,
+      cartTotal,
+      items,
+      orderStatus,
+      paymentMethod,
+      shippingCost: shippingResolution.cost,
     };
+  }, [activeStep, appliedCoupon, cartTotal, items, orderStatus, paymentMethod, shippingResolution.cost]);
 
+  const handleAbandonment = useCallback(() => {
+    const checkoutState = checkoutStateRef.current;
+
+    if (
+      abandonmentSent.current ||
+      checkoutState.orderStatus === "success" ||
+      checkoutState.items.length === 0
+    ) {
+      return;
+    }
+
+    const {
+      senderName,
+      senderEmail,
+      senderPhone,
+      receiverName,
+      receiverPhone,
+      deliveryDateTime,
+      exactAddress,
+      sector,
+      cardMessage,
+      observations,
+    } = readCheckoutFields();
+
+    const hasSenderData = Boolean(senderName && senderEmail && senderPhone);
+    const hasReceiverData = Boolean(
+      receiverName &&
+        receiverPhone &&
+        deliveryDateTime &&
+        exactAddress &&
+        sector &&
+        cardMessage
+    );
+    const hasReceiverProgress = Boolean(
+      receiverName ||
+        receiverPhone ||
+        deliveryDateTime ||
+        exactAddress ||
+        sector ||
+        cardMessage ||
+        observations
+    );
+
+    if (!hasSenderData) return;
+
+    const customerName = senderName || receiverName || "Cliente sin nombre";
+    const contactPhone = senderPhone || receiverPhone || "No proporcionado";
+    const checkoutStep: CheckoutStep =
+      checkoutState.activeStep === "payment" && hasReceiverData
+        ? "payment"
+        : hasReceiverProgress
+          ? "receiver"
+          : "sender";
+
+    fetch("/api/external/store-orders/abandoned", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        customerName,
+        phone: contactPhone,
+        senderName: senderName || "",
+        senderEmail: senderEmail || "",
+        senderPhone: senderPhone || "",
+        receiverName: receiverName || "",
+        receiverPhone: receiverPhone || "",
+        exactAddress: exactAddress || "",
+        sector: sector || "Guayaquil",
+        paymentMethod: checkoutState.paymentMethod,
+        deliveryDateTime: deliveryDateTime || "",
+        cardMessage: cardMessage || "",
+        observations: observations || "",
+        couponCode: checkoutState.appliedCoupon?.code || "",
+        abandonedAt: new Date().toISOString(),
+        abandonmentSessionId: abandonmentSessionId.current,
+        source: `CHECKOUT_WEB_${checkoutStep.toUpperCase()}`,
+        checkoutStep,
+        checkoutStepLabel: CHECKOUT_STEP_LABELS[checkoutStep],
+        items: checkoutState.items,
+        total:
+          checkoutState.cartTotal +
+          checkoutState.shippingCost -
+          (checkoutState.appliedCoupon
+            ? checkoutState.appliedCoupon.type === "PERCENTAGE"
+              ? checkoutState.cartTotal * checkoutState.appliedCoupon.percent_value
+              : checkoutState.appliedCoupon.amount || 0
+            : 0),
+      }),
+      keepalive: true,
+    });
+    abandonmentSent.current = true;
+  }, []);
+
+  useEffect(() => {
     const timer = setTimeout(handleAbandonment, 120000);
     window.addEventListener("beforeunload", handleAbandonment);
+    window.addEventListener("pagehide", handleAbandonment);
 
     return () => {
       clearTimeout(timer);
       window.removeEventListener("beforeunload", handleAbandonment);
+      window.removeEventListener("pagehide", handleAbandonment);
+      handleAbandonment();
     };
-  }, [items, orderStatus, paymentMethod, appliedCoupon, cartTotal, shippingResolution.cost, sectorInput]);
+  }, [handleAbandonment]);
 
   const cartSubtotal = cartTotal;
   const shippingCost = shippingResolution.cost;
@@ -784,6 +850,7 @@ export default function Checkout() {
         <div className="mb-10 flex flex-col items-center text-center">
           <Link
             href="/#catalogo"
+            onClick={handleAbandonment}
             className="group mb-5 inline-flex items-center gap-2 font-black text-[#4A3362] transition-colors hover:text-[#4A3362]"
           >
             <ChevronLeft className="h-5 w-5 transition-transform group-hover:translate-x-[-5px]" />

@@ -21,6 +21,50 @@ async function getCompanyForAdmin(adminId) {
   });
 }
 
+function extractCustomerEmail(notes) {
+  if (!notes) return "";
+
+  const match = String(notes).match(/Correo\s+envia:\s*([^|]+)/i);
+  return match?.[1]?.trim() || "";
+}
+
+async function findRecoveredOrderForCart(cart) {
+  const abandonedAt = cart.abandonedAt || cart.createdAt;
+  const customerEmail = extractCustomerEmail(cart.notes);
+  const customerPhone = String(cart.customerPhone || "").trim();
+  const or = [];
+
+  if (customerPhone) {
+    or.push({ customerPhone });
+  }
+
+  if (customerEmail) {
+    or.push({ customerEmail });
+  }
+
+  if (!or.length) return null;
+
+  return prisma.order.findFirst({
+    where: {
+      createdAt: {
+        gt: abandonedAt,
+      },
+      OR: or,
+    },
+    orderBy: {
+      createdAt: "asc",
+    },
+    select: {
+      id: true,
+      orderNumber: true,
+      total: true,
+      paymentStatus: true,
+      status: true,
+      createdAt: true,
+    },
+  });
+}
+
 router.get("/", async (req, res) => {
   try {
     const company = await getCompanyForAdmin(req.user?.adminId);
@@ -57,10 +101,35 @@ router.get("/", async (req, res) => {
         { createdAt: "desc" },
       ],
     });
+    const cartsWithRecovery = await Promise.all(
+      carts.map(async (cart) => {
+        const recoveredOrder = await findRecoveredOrderForCart(cart);
+
+        if (recoveredOrder && cart.status !== "RECOVERED") {
+          const updated = await prisma.abandonedCart.update({
+            where: { id: cart.id },
+            data: {
+              status: "RECOVERED",
+              recoveredAt: cart.recoveredAt || recoveredOrder.createdAt,
+            },
+          });
+
+          return {
+            ...updated,
+            recoveredOrder,
+          };
+        }
+
+        return {
+          ...cart,
+          recoveredOrder,
+        };
+      })
+    );
 
     return res.json({
       status: "success",
-      data: carts,
+      data: cartsWithRecovery,
     });
   } catch (error) {
     console.error("Get abandoned carts error:", error);
