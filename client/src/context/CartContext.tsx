@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
-import { Product } from "@/data/mock";
+import type { Product } from "@/data/mock";
 import { useToast } from "@/hooks/use-toast";
 
 export interface CartItem {

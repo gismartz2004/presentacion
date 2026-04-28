@@ -41,7 +41,10 @@ app.use(
 );
 
 // Servir archivos estáticos de la carpeta uploads 
-app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
+app.use('/uploads', express.static(path.join(process.cwd(), 'uploads'), {
+  maxAge: '365d',
+  immutable: true,
+}));
 
 // Health check route (sin autenticación)
 const healthRoutes = require("./routes/health");

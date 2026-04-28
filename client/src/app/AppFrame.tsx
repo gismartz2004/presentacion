@@ -5,17 +5,18 @@ import { Toaster } from "@/components/ui/toaster";
 
 const FACEBOOK_PIXEL_ID = "1783051885578047";
 
+type FacebookPixel = ((action: string, eventName: string) => void) & {
+  callMethod?: (...args: unknown[]) => void;
+  queue: unknown[];
+  loaded?: boolean;
+  version?: string;
+  push?: (...args: unknown[]) => number;
+};
+
 declare global {
   interface Window {
-    fbq?: ((action: string, eventName: string) => void) & {
-      callMethod?: (...args: unknown[]) => void;
-      queue?: unknown[];
-      loaded?: boolean;
-      version?: string;
-      push?: (...args: unknown[]) => number;
-    };
+    fbq?: FacebookPixel;
     _fbq?: typeof window.fbq;
-    requestIdleCallback?: (callback: IdleRequestCallback) => number;
   }
 }
 
@@ -31,12 +32,12 @@ function initFacebookPixel() {
     }
 
     fbq.queue.push(args);
-  } as NonNullable<typeof window.fbq>;
+  } as FacebookPixel;
 
   fbq.queue = [];
   fbq.loaded = true;
   fbq.version = "2.0";
-  fbq.push = (...args: unknown[]) => fbq.queue?.push(args) ?? 0;
+  fbq.push = (...args: unknown[]) => fbq.queue.push(args);
 
   window.fbq = fbq;
   window._fbq = fbq;

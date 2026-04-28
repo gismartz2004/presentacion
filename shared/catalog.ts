@@ -5,6 +5,12 @@ export interface ProductLike {
   isBestSeller?: boolean;
 }
 
+export interface CatalogProductCandidate extends ProductLike {
+  description?: string;
+  price?: string | number;
+  image?: string | null;
+}
+
 export const BEST_SELLERS_CATEGORY_NAME = "Más Vendidos";
 export const BEST_SELLERS_CATEGORY_SLUG = "mas-vendidos";
 
@@ -122,4 +128,30 @@ export function getProductPath(product: ProductLike) {
 export function getProductIdFromSlug(slug: string) {
   const segments = slug.split("-");
   return segments[segments.length - 1] || "";
+}
+
+function parsePrice(value: string | number | null | undefined) {
+  if (typeof value === "number") return Number.isFinite(value) ? value : 0;
+  if (!value) return 0;
+
+  const parsed = Number(String(value).replace(/[^0-9.]/g, ""));
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+export function isPublicCatalogProduct(product: CatalogProductCandidate) {
+  const name = normalizeDisplayText(product.name);
+  const description = normalizeDisplayText(product.description);
+  const category = normalizeDisplayText(product.category);
+  const slug = slugify(name);
+  const price = parsePrice(product.price);
+
+  const blockedNames = new Set(["uhoug-f", "hs-jjs"]);
+  if (blockedNames.has(slug)) return false;
+
+  const hasReadableName = name.length >= 8 && /[aeiouáéíóúñ]/i.test(name);
+  const hasUsefulDescription = description.length >= 24;
+  const hasPublicCategory = category.length > 2 && slugify(category) !== "general";
+  const hasCatalogPrice = price >= 10;
+
+  return hasReadableName && hasUsefulDescription && hasPublicCategory && hasCatalogPrice;
 }

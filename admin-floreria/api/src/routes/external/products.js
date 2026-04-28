@@ -42,6 +42,10 @@ function looksLikeGhostProduct(product) {
 router.get('/', async (req, res) => {
   try {
     const { category, featured } = req.query;
+    const requestedLimit = Number.parseInt(String(req.query.limit || ''), 10);
+    const limit = Number.isFinite(requestedLimit)
+      ? Math.max(1, Math.min(requestedLimit, 60))
+      : undefined;
 
     const where = { isActive: true, isDeleted: false };
     if (category) where.category = category;
@@ -52,14 +56,22 @@ router.get('/', async (req, res) => {
       include: {
         variants: {
           where: { isActive: true, isDeleted: false },
+          select: {
+            id: true,
+            name: true,
+            price: true,
+            isDefault: true,
+          },
           orderBy: { sortOrder: 'asc' },
         },
       },
       orderBy: [{ featured: 'desc' }, { createdAt: 'desc' }],
+      ...(limit ? { take: limit * 2 } : {}),
     });
 
     const data = products
       .filter((p) => !looksLikeGhostProduct(p))
+      .slice(0, limit || products.length)
       .map((p) => {
       const defaultVariant = p.variants.find((v) => v.isDefault) || p.variants[0];
       const price = p.hasVariants ? defaultVariant?.price : p.price;

@@ -1,10 +1,29 @@
 import { useQuery } from "@tanstack/react-query";
-import { Product, INITIAL_PRODUCTS } from "../data/mock";
+import type { Product } from "../data/mock";
 import { resolveApiUrl } from "@/lib/api";
 import { getPublicAppConfig } from "@/lib/runtime-config";
+import { isPublicCatalogProduct } from "@shared/catalog";
 
 const API_URL = "/api/external/products";
-export const productsQueryKey = (category?: string) => ["products", category || "all"] as const;
+export interface ProductsQueryOptions {
+  category?: string;
+  featured?: boolean;
+  limit?: number;
+}
+
+function normalizeProductOptions(options: string | ProductsQueryOptions = {}) {
+  return typeof options === "string" ? { category: options } : options;
+}
+
+export const productsQueryKey = (options: string | ProductsQueryOptions = {}) => {
+  const normalized = normalizeProductOptions(options);
+  return [
+    "products",
+    normalized.category || "all",
+    normalized.featured ? "featured" : "all",
+    normalized.limit || "all",
+  ] as const;
+};
 
 function getImageUrl(imagePath: string | null | undefined): string {
   // Placeholder neutral en caso de que no haya imagen
@@ -23,10 +42,16 @@ function getImageUrl(imagePath: string | null | undefined): string {
   return path;
 }
 
-export async function fetchProducts(category?: string, baseUrl?: string): Promise<Product[]> {
+export async function fetchProducts(
+  options: string | ProductsQueryOptions = {},
+  baseUrl?: string,
+): Promise<Product[]> {
   try {
+    const normalized = normalizeProductOptions(options);
     const params = new URLSearchParams();
-    if (category && category !== "all") params.set("category", category);
+    if (normalized.category && normalized.category !== "all") params.set("category", normalized.category);
+    if (normalized.featured) params.set("featured", "true");
+    if (normalized.limit && normalized.limit > 0) params.set("limit", String(normalized.limit));
 
     const query = params.toString();
     const endpoint = query ? `${API_URL}?${query}` : API_URL;
@@ -49,24 +74,22 @@ export async function fetchProducts(category?: string, baseUrl?: string): Promis
       deliveryTime: p.deliveryTime || "",
       size: p.size || "",
       includes: p.includes || p.description || "",
-    }));
+    })).filter(isPublicCatalogProduct);
 
-    // Si no hay productos de la API, usar datos mock
-    return products.length > 0 ? products : INITIAL_PRODUCTS;
+    return products;
   } catch (error) {
-    console.warn("Error fetching products from API, using mock data:", error);
-    // Fallback a datos mock si hay error en la API
-    return INITIAL_PRODUCTS;
+    console.warn("Error fetching products from API:", error);
+    return [];
   }
 }
 
 /**
  * Hook para obtener productos desde la API de producción.
  */
-export function useProducts(category?: string) {
+export function useProducts(options?: string | ProductsQueryOptions) {
   return useQuery<Product[], Error>({
-    queryKey: productsQueryKey(category),
-    queryFn: () => fetchProducts(category),
+    queryKey: productsQueryKey(options),
+    queryFn: () => fetchProducts(options),
     staleTime: 1000 * 60 * 2, // 2 minutos de caché
     retry: 1,
   });
@@ -77,35 +100,8 @@ export function useProducts(category?: string) {
  */
 export function useFeaturedProducts() {
   return useQuery<Product[], Error>({
-    queryKey: ["products", "featured"],
-    queryFn: async () => {
-      try {
-        const res = await fetch(resolveApiUrl(`${API_URL}?featured=true`));
-        if (!res.ok) throw new Error("Error al cargar productos destacados");
-        const json = await res.json();
-
-        const products = json.data.map((p: any): Product => ({
-          id: String(p.id),
-          name: p.name,
-          description: p.description || "",
-          category: p.category || "General",
-          price: p.price || "$0.00",
-          image: getImageUrl(p.image),
-          isBestSeller: p.isBestSeller || true,
-          stock: p.stock ?? 99,
-          deliveryTime: p.deliveryTime || "2-3 horas",
-          size: p.size || "-",
-          includes: p.includes || p.description || "",
-        }));
-
-        // Si no hay productos destacados de la API, usar productos mock destacados
-        return products.length > 0 ? products : INITIAL_PRODUCTS.filter(p => p.isBestSeller);
-      } catch (error) {
-        console.warn("Error fetching featured products from API, using mock data:", error);
-        // Fallback a productos mock destacados
-        return INITIAL_PRODUCTS.filter(p => p.isBestSeller);
-      }
-    },
+    queryKey: productsQueryKey({ featured: true }),
+    queryFn: () => fetchProducts({ featured: true }),
     staleTime: 1000 * 60 * 2,
     retry: 1,
   });

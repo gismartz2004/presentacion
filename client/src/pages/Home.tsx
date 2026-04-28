@@ -15,6 +15,7 @@ import { formatCategoryDisplayName, getCategoryPath } from "@shared/catalog";
 
 const HOME_PRODUCTS_PER_CATEGORY = 2;
 const HOME_CATEGORY_LIMIT = 4;
+const HOME_PRODUCT_LIMIT = HOME_PRODUCTS_PER_CATEGORY * HOME_CATEGORY_LIMIT;
 
 export default function Home() {
   const reviewsSectionRef = useRef<HTMLElement | null>(null);
@@ -43,7 +44,7 @@ export default function Home() {
   };
 
   // Productos y Datos desde la API real
-  const { data: allProducts = [], isLoading: isLoadingAll } = useProducts();
+  const { data: allProducts = [], isLoading: isLoadingAll } = useProducts({ limit: HOME_PRODUCT_LIMIT });
   const { data: company } = useCompany();
   const categorySections = React.useMemo(() => {
     const sections = new Map<string, typeof allProducts>();

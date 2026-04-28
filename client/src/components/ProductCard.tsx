@@ -1,5 +1,5 @@
 import React from "react";
-import { Product } from "@/data/mock";
+import type { Product } from "@/data/mock";
 import { Link } from "wouter";
 import { Loader2, MessageSquare, ShoppingBag } from "lucide-react";
 import { useCart } from "@/context/CartContext";
@@ -38,6 +38,7 @@ export function ProductCard({ product }: ProductCardProps) {
           loading="lazy"
           decoding="async"
           fetchPriority="low"
+          sizes="(min-width: 1280px) 28vw, (min-width: 640px) 44vw, 92vw"
           className="h-full w-full object-contain object-center"
         />
         

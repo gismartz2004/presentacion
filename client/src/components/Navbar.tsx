@@ -3,7 +3,6 @@ import { cn } from "@/lib/utils";
 import { ShoppingBag, Menu, X, Search, Loader2 } from "lucide-react";
 import { lazy, Suspense, useEffect, useState } from "react";
 import { Logo } from "@/components/Logo";
-import { motion, AnimatePresence } from "framer-motion";
 import { useCart } from "@/context/CartContext";
 import { DEFAULT_COMPANY } from "@/lib/site";
 
@@ -186,15 +185,8 @@ export function Navbar() {
           </div>
         </div>
 
-        <AnimatePresence>
-          {isOpen ? (
-            <motion.div
-              initial={{ opacity: 0, y: -20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-              transition={{ duration: 0.4, ease: [0.25, 1, 0.5, 1] }}
-              className="fixed inset-0 z-[100] flex h-screen w-full flex-col bg-background/95 p-8 backdrop-blur-3xl lg:hidden"
-            >
+        {isOpen ? (
+          <div className="mobile-menu-enter fixed inset-0 z-[100] flex h-screen w-full flex-col bg-background/95 p-8 backdrop-blur-3xl lg:hidden">
               <div className="mb-16 flex items-center justify-between">
                 <Logo size="sm" variant="dark" />
                 <button
@@ -219,9 +211,8 @@ export function Navbar() {
                   </a>
                 ))}
               </div>
-            </motion.div>
-          ) : null}
-        </AnimatePresence>
+          </div>
+        ) : null}
       </nav>
 
       <a

@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { ArrowRight, Loader2, MessageCircle } from "lucide-react";
+import { ArrowRight, MessageCircle } from "lucide-react";
 import { Link } from "wouter";
 import { cn } from "@/lib/utils";
 import { useCMS } from "@/hooks/useCMS";
@@ -43,7 +43,7 @@ function normalizeHeroImageUrl(image: unknown) {
 
 export function Banner() {
   const [selectedIndex, setSelectedIndex] = useState(0);
-  const { data: cms, isLoading } = useCMS();
+  const { data: cms } = useCMS();
 
   const slides = useMemo(() => {
     if (!cms) return DEFAULT_SLIDES;
@@ -67,6 +67,10 @@ export function Banner() {
   const shouldAutoplay = Boolean(cms && slides.length > 1);
 
   useEffect(() => {
+    setSelectedIndex(0);
+  }, [slides.length]);
+
+  useEffect(() => {
     if (!shouldAutoplay) return;
 
     const timer = window.setInterval(() => {
@@ -75,14 +79,6 @@ export function Banner() {
 
     return () => window.clearInterval(timer);
   }, [shouldAutoplay, slides.length]);
-
-  if (isLoading) {
-    return (
-      <div className="flex h-[72vh] min-h-[560px] items-center justify-center bg-[#111] md:h-[82vh]">
-        <Loader2 className="h-10 w-10 animate-spin text-white/20" />
-      </div>
-    );
-  }
 
   return (
     <section className="relative overflow-hidden bg-[#111]">

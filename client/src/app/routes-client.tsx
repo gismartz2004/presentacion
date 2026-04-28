@@ -1,10 +1,10 @@
 import { lazy } from "react";
 import { Switch, Route } from "wouter";
 import Home from "@/pages/Home";
-import Shop from "@/pages/Shop";
-import CategoryPage from "@/pages/CategoryPage";
-import ProductDetails from "@/pages/ProductDetails";
 
+const Shop = lazy(() => import("@/pages/Shop"));
+const CategoryPage = lazy(() => import("@/pages/CategoryPage"));
+const ProductDetails = lazy(() => import("@/pages/ProductDetails"));
 const NotFound = lazy(() => import("@/pages/not-found"));
 const Checkout = lazy(() => import("@/pages/Checkout"));
 const PaymentGateway = lazy(() => import("@/pages/PaymentGateway"));

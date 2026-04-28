@@ -1,12 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
 import { resolveApiUrl } from "@/lib/api";
-import { CATEGORIES, INITIAL_PRODUCTS } from "@/data/mock";
 
 const API_URL = "/api/external/products/categories";
 export const categoriesQueryKey = ["categories"] as const;
-const FALLBACK_CATEGORIES = Array.from(
-  new Set([...CATEGORIES.map((category) => category.name), ...INITIAL_PRODUCTS.map((product) => product.category)]),
-);
 
 export async function fetchCategories(baseUrl?: string): Promise<string[]> {
   try {
@@ -18,8 +14,8 @@ export async function fetchCategories(baseUrl?: string): Promise<string[]> {
 
     return json.data;
   } catch (error) {
-    console.warn("Error fetching categories from API, using fallback data:", error);
-    return FALLBACK_CATEGORIES;
+    console.warn("Error fetching categories from API:", error);
+    return [];
   }
 }
 

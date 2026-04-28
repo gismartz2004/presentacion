@@ -40,6 +40,9 @@ export default defineConfig({
     outDir: path.resolve(import.meta.dirname, "dist/public"),
     emptyOutDir: true,
     target: "es2022",
+    modulePreload: {
+      polyfill: false,
+    },
   },
   server: {
     host: "0.0.0.0",

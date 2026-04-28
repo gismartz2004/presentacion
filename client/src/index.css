@@ -1,5 +1,4 @@
 @import "tailwindcss";
-@import "tw-animate-css";
 
 @theme inline {
   --color-background: #FDF8FF; /* Soft Cream Lavender */
@@ -174,6 +173,22 @@
 .deferred-section {
   content-visibility: auto;
   contain-intrinsic-size: 900px;
+}
+
+.mobile-menu-enter {
+  animation: mobile-menu-enter 0.3s ease both;
+}
+
+@keyframes mobile-menu-enter {
+  from {
+    opacity: 0;
+    transform: translateY(-1rem);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .checkout-shell {

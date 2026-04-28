@@ -53,6 +53,7 @@ async function uploadToMinio({ objectName, buffer, contentType }) {
   await ensureMinioBucket(bucketName);
   await minioClient.putObject(bucketName, objectName, buffer, buffer.length, {
     "Content-Type": contentType,
+    "Cache-Control": "public, max-age=31536000, immutable",
   });
 
   return {
