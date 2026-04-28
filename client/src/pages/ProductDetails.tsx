@@ -98,12 +98,44 @@ export default function ProductDetails() {
   const productPath = getProductPath(product);
   const categoryPath = getCategoryPath(product.category);
   const categoryLabel = formatCategoryDisplayName(product.category);
+  const galleryImages = Array.from(
+    new Set([product.image, ...(product.additionalImages || [])].filter(Boolean))
+  );
+  const normalizedDescription = (product.description || "").trim().toLowerCase();
+  const normalizedIncludes = (product.includes || "").trim().toLowerCase();
+  const detailItems = [
+    normalizedIncludes && normalizedIncludes !== normalizedDescription
+      ? {
+          title: "Lo que recibes",
+          content: product.includes,
+        }
+      : null,
+    product.size
+      ? {
+          title: "Dimensiones",
+          content: product.size,
+        }
+      : null,
+    product.deliveryTime
+      ? {
+          title: "Promesa de Entrega",
+          content: (
+            <p className="flex items-center gap-2 text-[1.05rem] font-medium leading-relaxed text-[#8F73B1]">
+              <Clock className="w-4 h-4" /> {product.deliveryTime} (Guayaquil)
+            </p>
+          ),
+        }
+      : null,
+  ].filter(Boolean) as Array<{
+    title: string;
+    content: React.ReactNode;
+  }>;
   const productSchema = {
     "@context": "https://schema.org",
     "@type": "Product",
     name: product.name,
     description: product.description,
-    image: [absoluteUrl(product.image), ...(product.additionalImages || []).map((image) => absoluteUrl(image))],
+    image: galleryImages.map((image) => absoluteUrl(image)),
     category: categoryLabel,
     brand: {
       "@type": "Brand",
@@ -201,30 +233,32 @@ export default function ProductDetails() {
               />
             </motion.div>
 
-            <div className="flex gap-4 justify-center lg:justify-start w-full max-w-xl overflow-x-auto pb-4 no-scrollbar">
-              {[product.image, ...(product.additionalImages || [])].map((img, i) => (
-                <button
-                  key={i}
-                  type="button"
-                  aria-label={`Ver imagen ${i + 1} de ${product.name}`}
-                  onMouseEnter={() => setSelectedImage(img)}
-                  onClick={() => setSelectedImage(img)}
-                  className={cn(
-                    "h-24 w-24 min-w-[6rem] overflow-hidden rounded-2xl border-2 bg-white transition-all hover:scale-105",
-                    selectedImage === img ? "border-accent shadow-lg" : "border-primary/10",
-                  )}
-                >
-                  <img
-                    src={img}
-                    className="w-full h-full object-contain object-center p-1"
-                    alt={`${product.name} vista ${i + 1}`}
-                    loading="lazy"
-                    decoding="async"
-                    fetchPriority="low"
-                  />
-                </button>
-              ))}
-            </div>
+            {galleryImages.length > 1 ? (
+              <div className="flex gap-4 justify-center lg:justify-start w-full max-w-xl overflow-x-auto pb-4 no-scrollbar">
+                {galleryImages.map((img, i) => (
+                  <button
+                    key={i}
+                    type="button"
+                    aria-label={`Ver imagen ${i + 1} de ${product.name}`}
+                    onMouseEnter={() => setSelectedImage(img)}
+                    onClick={() => setSelectedImage(img)}
+                    className={cn(
+                      "h-24 w-24 min-w-[6rem] overflow-hidden rounded-2xl border-2 bg-white transition-all hover:scale-105",
+                      selectedImage === img ? "border-accent shadow-lg" : "border-primary/10",
+                    )}
+                  >
+                    <img
+                      src={img}
+                      className="w-full h-full object-contain object-center p-1"
+                      alt={`${product.name} vista ${i + 1}`}
+                      loading="lazy"
+                      decoding="async"
+                      fetchPriority="low"
+                    />
+                  </button>
+                ))}
+              </div>
+            ) : null}
           </div>
 
           <div className="flex flex-col h-full">
@@ -247,22 +281,24 @@ export default function ProductDetails() {
               "{product.description}"
             </p>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-8 mb-16">
-              <div className="space-y-3">
-                <h4 className="text-[10px] font-black uppercase tracking-[0.3em] text-accent">Lo que recibes</h4>
-                <p className="text-[1.05rem] font-medium leading-relaxed text-[#8F73B1]">{product.includes}</p>
+            {detailItems.length > 0 ? (
+              <div className="mb-16 grid grid-cols-1 gap-8 sm:grid-cols-2">
+                {detailItems.map((item) => (
+                  <div key={item.title} className="space-y-3">
+                    <h4 className="text-[10px] font-black uppercase tracking-[0.3em] text-accent">
+                      {item.title}
+                    </h4>
+                    {typeof item.content === "string" ? (
+                      <p className="text-[1.05rem] font-medium leading-relaxed text-[#8F73B1]">
+                        {item.content}
+                      </p>
+                    ) : (
+                      item.content
+                    )}
+                  </div>
+                ))}
               </div>
-              <div className="space-y-3">
-                <h4 className="text-[10px] font-black uppercase tracking-[0.3em] text-accent">Dimensiones</h4>
-                <p className="text-[1.05rem] font-medium leading-relaxed text-[#8F73B1]">{product.size}</p>
-              </div>
-              <div className="space-y-3">
-                <h4 className="text-[10px] font-black uppercase tracking-[0.3em] text-accent">Promesa de Entrega</h4>
-                <p className="flex items-center gap-2 text-[1.05rem] font-medium leading-relaxed text-[#8F73B1]">
-                  <Clock className="w-4 h-4" /> {product.deliveryTime} (Guayaquil)
-                </p>
-              </div>
-            </div>
+            ) : null}
 
             <div className="flex flex-col sm:flex-row gap-6 mt-auto">
               <button type="button" onClick={handleBuyNow} disabled={isBuying} className="ui-btn-primary flex-1 py-5">
