@@ -26,6 +26,14 @@ type AbandonedCart = {
   notes?: string | null;
   contactedAt?: string | null;
   recoveredAt?: string | null;
+  recoveredOrder?: {
+    id: string;
+    orderNumber: string;
+    total: number;
+    paymentStatus?: string | null;
+    status?: string | null;
+    createdAt: string;
+  } | null;
   abandonedAt?: string | null;
   createdAt: string;
   updatedAt: string;
@@ -234,6 +242,15 @@ export default function AbandonedCartsPage() {
                     Email enviado
                   </span>
                 )}
+                <span
+                  className={`rounded-full px-2.5 py-1 text-[11px] font-medium ${
+                    selectedCart.recoveredOrder
+                      ? "bg-green-100 text-green-700"
+                      : "bg-gray-100 text-gray-600"
+                  }`}
+                >
+                  {selectedCart.recoveredOrder ? "Compro despues" : "Sin compra posterior"}
+                </span>
               </div>
 
               <div className="grid gap-3 md:grid-cols-3">
@@ -249,6 +266,18 @@ export default function AbandonedCartsPage() {
                 <Info label="Cupon" value={selectedCart.couponCode} />
                 <Info label="Origen" value={selectedCart.source} />
                 <Info label="Total" value={`$${Number(selectedCart.total || 0).toFixed(2)}`} />
+                <Info
+                  label="Compro despues"
+                  value={selectedCart.recoveredOrder ? "Si" : "No"}
+                />
+                <Info
+                  label="Orden posterior"
+                  value={selectedCart.recoveredOrder?.orderNumber}
+                />
+                <Info
+                  label="Fecha compra"
+                  value={selectedCart.recoveredOrder?.createdAt ? formatDate(selectedCart.recoveredOrder.createdAt) : ""}
+                />
               </div>
 
               {selectedCart.cardMessage && (
