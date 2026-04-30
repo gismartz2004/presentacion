@@ -88,6 +88,7 @@ function extractTenantDomain(fullHost) {
 
   // Quitar puerto y normalizar
   const host = fullHost.split(":")[0].toLowerCase();
+  const ignoredSubdomains = new Set(["api", "admin", "www", "prd", "prod", "staging"]);
 
   // 🧪 Ambiente local
   if (host === "localhost" || host.endsWith(".localhost")) {
@@ -100,8 +101,13 @@ function extractTenantDomain(fullHost) {
 
   // admin.perfumeriasz.com → perfumeriasz
   // perfumeriasz.com → perfumeriasz
+  if (host.endsWith(".com.ec") && parts.length >= 3) {
+    return parts[parts.length - 3];
+  }
+
   if (parts.length >= 2) {
-    return parts[parts.length - 2];
+    const candidates = parts.slice(0, -1).filter((part) => !ignoredSubdomains.has(part));
+    return candidates[candidates.length - 1] || parts[parts.length - 2];
   }
 
   return null;

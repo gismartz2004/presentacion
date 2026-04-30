@@ -27,7 +27,7 @@ spec:
             - name: APP_PUBLIC_SITE_URL
               value: "https://difiori.com"
             - name: BACKEND_URL
-              value: "https://api-admin.perfumeriasz.com"
+              value: "https://api.prd.difiori.com.ec"
             # Opcional: si sirves imágenes desde otro dominio/CDN
             # - name: APP_PUBLIC_ASSET_URL
             #   value: "https://cdn.difiori.com"
