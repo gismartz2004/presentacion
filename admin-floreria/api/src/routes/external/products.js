@@ -3,37 +3,6 @@ const { db: prisma } = require('../../lib/prisma');
 
 const router = express.Router();
 
-function normalizeText(value) {
-  return String(value || '')
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .trim()
-    .toLowerCase();
-}
-
-function looksLikeGhostProduct(product) {
-  const name = String(product?.name || '').trim();
-  const normalizedName = normalizeText(name);
-  const description = normalizeText(product?.description || '');
-  const category = normalizeText(product?.category || '');
-  const price = Number(product?.price || 0);
-
-  if (!name || normalizedName.length < 5) return true;
-  if (price > 0 && price < 5) return true;
-  if (description.length < 12) return true;
-  if (!category || category === 'general') return true;
-  if (!/[aeiou]/i.test(name)) return true;
-
-  const suspiciousTokens = ['test', 'prueba', 'demo', 'tmp', 'fake', 'ghost'];
-  if (suspiciousTokens.some((token) => normalizedName.includes(token))) return true;
-
-  const wordCount = normalizedName.split(/\s+/).filter(Boolean).length;
-  const hasVeryShortWords = normalizedName.split(/\s+/).some((word) => word.length <= 2);
-  if (wordCount >= 2 && hasVeryShortWords && price <= 10) return true;
-
-  return false;
-}
-
 /**
  * GET /api/external/products
  * Route pública para que la tienda pueda obtener productos activos.
@@ -70,35 +39,34 @@ router.get('/', async (req, res) => {
     });
 
     const data = products
-      .filter((p) => !looksLikeGhostProduct(p))
       .slice(0, limit || products.length)
       .map((p) => {
-      const defaultVariant = p.variants.find((v) => v.isDefault) || p.variants[0];
-      const price = p.hasVariants ? defaultVariant?.price : p.price;
+        const defaultVariant = p.variants.find((v) => v.isDefault) || p.variants[0];
+        const price = p.hasVariants ? defaultVariant?.price : p.price;
 
-      // Calcular si es best seller (featured)
-      return {
-        id: p.id,
-        name: p.name,
-        description: p.description,
-        price: price ? `$${Number(price).toFixed(2)}` : '$0.00',
-        rawPrice: price || 0,
-        image: p.image || '',
-        category: p.category,
-        isBestSeller: p.featured,
-        stock: p.stock,
-        hasVariants: p.hasVariants,
-        variants: p.variants.map((v) => ({
-          id: v.id,
-          name: v.name,
-          price: v.price,
-          isDefault: v.isDefault,
-        })),
-        deliveryTime: '2-3 horas',
-        size: '-',
-        includes: p.description || '',
-      };
-    });
+        // Calcular si es best seller (featured)
+        return {
+          id: p.id,
+          name: p.name,
+          description: p.description,
+          price: price ? `$${Number(price).toFixed(2)}` : '$0.00',
+          rawPrice: price || 0,
+          image: p.image || '',
+          category: p.category,
+          isBestSeller: p.featured,
+          stock: p.stock,
+          hasVariants: p.hasVariants,
+          variants: p.variants.map((v) => ({
+            id: v.id,
+            name: v.name,
+            price: v.price,
+            isDefault: v.isDefault,
+          })),
+          deliveryTime: '2-3 horas',
+          size: '-',
+          includes: p.description || '',
+        };
+      });
 
     return res.status(200).json({ status: 'success', data });
   } catch (error) {
@@ -115,12 +83,11 @@ router.get('/categories', async (req, res) => {
   try {
     const categories = await prisma.product.findMany({
       where: { isActive: true, isDeleted: false },
-      select: { name: true, description: true, category: true, price: true },
+      select: { category: true },
       distinct: ['category'],
     });
 
     const data = categories
-      .filter((product) => !looksLikeGhostProduct(product))
       .map((c) => c.category)
       .filter((c) => c && c.trim() !== "");
 

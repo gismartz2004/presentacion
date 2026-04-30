@@ -140,18 +140,14 @@ function parsePrice(value: string | number | null | undefined) {
 
 export function isPublicCatalogProduct(product: CatalogProductCandidate) {
   const name = normalizeDisplayText(product.name);
-  const description = normalizeDisplayText(product.description);
-  const category = normalizeDisplayText(product.category);
   const slug = slugify(name);
   const price = parsePrice(product.price);
 
   const blockedNames = new Set(["uhoug-f", "hs-jjs"]);
   if (blockedNames.has(slug)) return false;
 
-  const hasReadableName = name.length >= 8 && /[aeiouáéíóúñ]/i.test(name);
-  const hasUsefulDescription = description.length >= 24;
-  const hasPublicCategory = category.length > 2 && slugify(category) !== "general";
-  const hasCatalogPrice = price >= 10;
+  const hasReadableName = name.length >= 2 && /[aeiouáéíóúñ]/i.test(name);
+  const hasCatalogPrice = price > 0;
 
-  return hasReadableName && hasUsefulDescription && hasPublicCategory && hasCatalogPrice;
+  return Boolean(product.id) && hasReadableName && hasCatalogPrice;
 }

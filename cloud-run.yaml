@@ -26,11 +26,11 @@ spec:
               value: "production"
             - name: APP_PUBLIC_SITE_URL
               value: "https://difiori.com"
+            - name: BACKEND_URL
+              value: "https://api-admin.perfumeriasz.com"
             # Opcional: si sirves imágenes desde otro dominio/CDN
             # - name: APP_PUBLIC_ASSET_URL
             #   value: "https://cdn.difiori.com"
-            # - name: BACKEND_URL
-            #   value: "https://api.difiori.com"
             # ADD DATABASE_URL OR OTHER SECRETS HERE
             # - name: DATABASE_URL
             #   valueFrom:
