@@ -6,7 +6,7 @@ export const categoriesQueryKey = ["categories"] as const;
 
 export async function fetchCategories(baseUrl?: string): Promise<string[]> {
   try {
-    const res = await fetch(resolveApiUrl(API_URL, baseUrl));
+    const res = await fetch(resolveApiUrl(API_URL, baseUrl), { cache: "no-store" });
     if (!res.ok) throw new Error("Error al cargar categorías");
 
     const json = await res.json();
@@ -23,6 +23,8 @@ export function useCategories() {
   return useQuery<string[], Error>({
     queryKey: categoriesQueryKey,
     queryFn: () => fetchCategories(),
-    staleTime: 1000 * 60 * 10, // 10 minutos (las categorías no cambian muy seguido)
+    staleTime: 0,
+    refetchOnMount: "always",
+    refetchOnWindowFocus: true,
   });
 }

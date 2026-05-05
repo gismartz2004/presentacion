@@ -18,6 +18,7 @@ import {
   formatCategoryDisplayName,
   getCategoryDescription,
   getCategoryPath,
+  getCategorySlug,
 } from "@shared/catalog";
 
 export default function CategoryPage() {
@@ -34,7 +35,7 @@ export default function CategoryPage() {
   const products = useMemo(() => {
     if (!categoryName) return [];
     if (isBestSellers) return allProducts.filter((product) => product.isBestSeller);
-    return allProducts.filter((product) => product.category === categoryName);
+    return allProducts.filter((product) => getCategorySlug(product.category) === getCategorySlug(categoryName));
   }, [allProducts, categoryName, isBestSellers]);
 
   const loading = isLoadingCategories || isLoadingProducts;

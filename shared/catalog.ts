@@ -148,10 +148,10 @@ export function isPublicCatalogProduct(product: CatalogProductCandidate) {
   const blockedNames = new Set(["uhoug-f", "hs-jjs"]);
   if (blockedNames.has(slug)) return false;
 
-  const hasReadableName = name.length >= 8 && /[aeiouáéíóúñ]/i.test(name);
-  const hasUsefulDescription = description.length >= 24;
-  const hasPublicCategory = category.length > 2 && slugify(category) !== "general";
-  const hasCatalogPrice = price >= 10;
+  const hasReadableName = name.length >= 2 && /[aeiouáéíóúñ]/i.test(name);
+  const hasUsefulDescription = description.length >= 3;
+  const hasPublicCategory = category.length > 0 && slugify(category) !== "general";
+  const hasCatalogPrice = price > 0;
 
   return hasReadableName && hasUsefulDescription && hasPublicCategory && hasCatalogPrice;
 }

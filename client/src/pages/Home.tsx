@@ -11,11 +11,9 @@ import { useCompany } from "@/hooks/useCompany";
 import { useReviews, useCreateReview } from "@/hooks/useReviews";
 import { Seo } from "@/components/Seo";
 import { DEFAULT_COMPANY, absoluteUrl } from "@/lib/site";
-import { formatCategoryDisplayName, getCategoryPath } from "@shared/catalog";
+import { formatCategoryDisplayName, getCategoryPath, getCategorySlug } from "@shared/catalog";
 
 const HOME_PRODUCTS_PER_CATEGORY = 2;
-const HOME_CATEGORY_LIMIT = 4;
-const HOME_PRODUCT_LIMIT = HOME_PRODUCTS_PER_CATEGORY * HOME_CATEGORY_LIMIT;
 
 export default function Home() {
   const reviewsSectionRef = useRef<HTMLElement | null>(null);
@@ -44,26 +42,26 @@ export default function Home() {
   };
 
   // Productos y Datos desde la API real
-  const { data: allProducts = [], isLoading: isLoadingAll } = useProducts({ limit: HOME_PRODUCT_LIMIT });
+  const { data: allProducts = [], isLoading: isLoadingAll } = useProducts();
   const { data: company } = useCompany();
   const categorySections = React.useMemo(() => {
-    const sections = new Map<string, typeof allProducts>();
+    const sections = new Map<string, { category: string; products: typeof allProducts }>();
 
     for (const product of allProducts) {
-      const category = product.category || "General";
-      const existing = sections.get(category) || [];
-      existing.push(product);
-      sections.set(category, existing);
+      const category = product.category?.trim() || "General";
+      const key = getCategorySlug(category);
+      const section = sections.get(key) || { category, products: [] };
+      section.products.push(product);
+      sections.set(key, section);
     }
 
-    return Array.from(sections.entries())
-      .map(([category, products]) => ({
+    return Array.from(sections.values())
+      .map(({ category, products }) => ({
         category,
         label: formatCategoryDisplayName(category),
         href: getCategoryPath(category),
         products: products.slice(0, HOME_PRODUCTS_PER_CATEGORY),
-      }))
-      .slice(0, HOME_CATEGORY_LIMIT);
+      }));
   }, [allProducts]);
 
   useEffect(() => {

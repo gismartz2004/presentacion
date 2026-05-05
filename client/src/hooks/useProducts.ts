@@ -55,7 +55,7 @@ export async function fetchProducts(
 
     const query = params.toString();
     const endpoint = query ? `${API_URL}?${query}` : API_URL;
-    const res = await fetch(resolveApiUrl(endpoint, baseUrl));
+    const res = await fetch(resolveApiUrl(endpoint, baseUrl), { cache: "no-store" });
     if (!res.ok) throw new Error("Error al cargar productos");
 
     const json = await res.json();
@@ -90,7 +90,9 @@ export function useProducts(options?: string | ProductsQueryOptions) {
   return useQuery<Product[], Error>({
     queryKey: productsQueryKey(options),
     queryFn: () => fetchProducts(options),
-    staleTime: 1000 * 60 * 2, // 2 minutos de caché
+    staleTime: 0,
+    refetchOnMount: "always",
+    refetchOnWindowFocus: true,
     retry: 1,
   });
 }
@@ -102,7 +104,9 @@ export function useFeaturedProducts() {
   return useQuery<Product[], Error>({
     queryKey: productsQueryKey({ featured: true }),
     queryFn: () => fetchProducts({ featured: true }),
-    staleTime: 1000 * 60 * 2,
+    staleTime: 0,
+    refetchOnMount: "always",
+    refetchOnWindowFocus: true,
     retry: 1,
   });
 }

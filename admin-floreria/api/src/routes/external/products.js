@@ -18,9 +18,9 @@ function looksLikeGhostProduct(product) {
   const category = normalizeText(product?.category || '');
   const price = Number(product?.price || 0);
 
-  if (!name || normalizedName.length < 5) return true;
-  if (price > 0 && price < 5) return true;
-  if (description.length < 12) return true;
+  if (!name || normalizedName.length < 2) return true;
+  if (price > 0 && price < 1) return true;
+  if (description.length < 3) return true;
   if (!category || category === 'general') return true;
   if (!/[aeiou]/i.test(name)) return true;
 
@@ -29,7 +29,7 @@ function looksLikeGhostProduct(product) {
 
   const wordCount = normalizedName.split(/\s+/).filter(Boolean).length;
   const hasVeryShortWords = normalizedName.split(/\s+/).some((word) => word.length <= 2);
-  if (wordCount >= 2 && hasVeryShortWords && price <= 10) return true;
+  if (wordCount >= 2 && hasVeryShortWords && price <= 1) return true;
 
   return false;
 }
@@ -42,13 +42,13 @@ function looksLikeGhostProduct(product) {
 router.get('/', async (req, res) => {
   try {
     const { category, featured } = req.query;
+    const requestedCategory = typeof category === 'string' ? normalizeText(category) : '';
     const requestedLimit = Number.parseInt(String(req.query.limit || ''), 10);
     const limit = Number.isFinite(requestedLimit)
       ? Math.max(1, Math.min(requestedLimit, 60))
       : undefined;
 
     const where = { isActive: true, isDeleted: false };
-    if (category) where.category = category;
     if (featured === 'true') where.featured = true;
 
     const products = await prisma.product.findMany({
@@ -71,6 +71,7 @@ router.get('/', async (req, res) => {
 
     const data = products
       .filter((p) => !looksLikeGhostProduct(p))
+      .filter((p) => !requestedCategory || normalizeText(p.category) === requestedCategory)
       .slice(0, limit || products.length)
       .map((p) => {
       const defaultVariant = p.variants.find((v) => v.isDefault) || p.variants[0];
@@ -84,7 +85,7 @@ router.get('/', async (req, res) => {
         price: price ? `$${Number(price).toFixed(2)}` : '$0.00',
         rawPrice: price || 0,
         image: p.image || '',
-        category: p.category,
+        category: String(p.category || '').trim(),
         isBestSeller: p.featured,
         stock: p.stock,
         hasVariants: p.hasVariants,
@@ -100,6 +101,7 @@ router.get('/', async (req, res) => {
       };
     });
 
+    res.set('Cache-Control', 'no-store');
     return res.status(200).json({ status: 'success', data });
   } catch (error) {
     console.error('External products error:', error);
@@ -119,11 +121,23 @@ router.get('/categories', async (req, res) => {
       distinct: ['category'],
     });
 
-    const data = categories
+    const categoriesByKey = new Map();
+
+    categories
       .filter((product) => !looksLikeGhostProduct(product))
       .map((c) => c.category)
-      .filter((c) => c && c.trim() !== "");
+      .filter((c) => c && c.trim() !== "")
+      .forEach((categoryName) => {
+        const normalizedName = categoryName.trim();
+        const key = normalizeText(normalizedName);
+        if (!categoriesByKey.has(key)) {
+          categoriesByKey.set(key, normalizedName);
+        }
+      });
 
+    const data = Array.from(categoriesByKey.values());
+
+    res.set('Cache-Control', 'no-store');
     return res.status(200).json({ status: 'success', data });
   } catch (error) {
     console.error('External categories error:', error);

@@ -101,7 +101,6 @@ const ASSET_BASE_URL =
   normalizeUrl(process.env.APP_PUBLIC_ASSET_URL || process.env.ASSET_BASE_URL || process.env.VITE_ASSET_BASE_URL) ||
   "";
 const DEFAULT_HERO_IMAGE = "/assets/banner_collage.jpg";
-const HOME_PRODUCT_LIMIT = 8;
 const PAYPHONE_WEB_TOKEN = process.env.PAYPHONE_WEB_TOKEN || process.env.PAYPHONE_TOKEN;
 const PAYPHONE_WEB_STORE_ID = process.env.PAYPHONE_WEB_STORE_ID || process.env.PAYPHONE_STORE_ID;
 
@@ -223,8 +222,8 @@ async function prefetchSsrRouteData(queryClient: QueryClient, path: string, base
   if (path === "/") {
     await Promise.all([
       queryClient.prefetchQuery({
-        queryKey: productsQueryKey({ limit: HOME_PRODUCT_LIMIT }),
-        queryFn: () => fetchProducts({ limit: HOME_PRODUCT_LIMIT }, baseUrl),
+        queryKey: productsQueryKey(),
+        queryFn: () => fetchProducts(undefined, baseUrl),
       }),
       queryClient.prefetchQuery({
         queryKey: categoriesQueryKey,
@@ -341,7 +340,7 @@ async function proxyToBackend(req: Request, res: Response) {
       req.originalUrl.startsWith("/api/external/") &&
       !response.headers.has("cache-control")
     ) {
-      res.setHeader("Cache-Control", "public, max-age=120, stale-while-revalidate=600");
+      res.setHeader("Cache-Control", "no-store");
     }
 
     res.status(response.status);
