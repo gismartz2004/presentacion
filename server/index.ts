@@ -30,6 +30,25 @@ import type { ViteDevServer } from "vite";
 const app = express();
 const httpServer = createServer(app);
 
+function hydrateEnvFile(envPath: string) {
+  if (!existsSync(envPath)) return;
+
+  const envFile = readFileSync(envPath, "utf8");
+  for (const rawLine of envFile.split(/\r?\n/)) {
+    const line = rawLine.trim();
+    if (!line || line.startsWith("#")) continue;
+
+    const separatorIndex = line.indexOf("=");
+    if (separatorIndex === -1) continue;
+
+    const key = line.slice(0, separatorIndex).trim();
+    const value = line.slice(separatorIndex + 1).trim().replace(/^['"]|['"]$/g, "");
+    if (key && value && !process.env[key]) {
+      process.env[key] = value;
+    }
+  }
+}
+
 function normalizeUrl(value?: string | null) {
   const normalized = String(value || "").trim();
   return normalized ? normalized.replace(/\/$/, "") : "";
@@ -71,6 +90,7 @@ function hydratePayphoneEnvFromAdminEnv() {
   }
 }
 
+hydrateEnvFile(resolve(process.cwd(), ".env"));
 hydratePayphoneEnvFromAdminEnv();
 
 const BACKEND_ORIGIN = normalizeUrl(process.env.BACKEND_URL || "http://localhost:4001");

@@ -223,7 +223,7 @@
 }
 
 .checkout-input {
-  @apply w-full rounded-2xl border px-5 py-4 text-base font-semibold outline-none transition-all sm:text-lg;
+  @apply w-full rounded-xl border px-4 py-3 text-base font-semibold outline-none transition-all sm:rounded-2xl sm:px-5 sm:py-4 sm:text-lg;
   background: #ffffff;
   border-color: rgba(90, 63, 115, 0.22);
   color: #4B0082;
@@ -251,12 +251,26 @@
 }
 
 .checkout-field {
-  @apply block space-y-2 text-lg font-black text-[#4B0082];
+  @apply block space-y-2 text-base font-black text-[#4B0082] sm:text-lg;
 }
 
 .checkout-field > span {
-  @apply flex items-center gap-2;
+  @apply flex items-center gap-2 leading-snug;
   color: #4B0082;
+}
+
+@media (max-width: 640px) {
+  .checkout-shell {
+    overflow-x: hidden;
+  }
+
+  .checkout-panel {
+    box-shadow: 0 12px 30px rgba(74, 51, 98, 0.08);
+  }
+
+  .checkout-panel::before {
+    display: none;
+  }
 }
 
 .nav-link-hover {

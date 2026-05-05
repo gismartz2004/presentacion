@@ -26,6 +26,17 @@ const allowedOrigins = originEnv
   .map((o) => o.trim())
   .filter(Boolean);
 
+function isLocalDevelopmentOrigin(requestOrigin) {
+  if (!requestOrigin) return false;
+
+  try {
+    const { hostname } = new URL(requestOrigin);
+    return hostname === 'localhost' || hostname === '127.0.0.1' || hostname.endsWith('.localhost');
+  } catch {
+    return false;
+  }
+}
+
 app.use(
   cors({
     origin: (requestOrigin, callback) => {
@@ -33,6 +44,7 @@ app.use(
       if (!allowedOrigins.length && requestOrigin) return callback(null, true);
       if (!requestOrigin) return callback(null, false);
       if (allowedOrigins.includes(requestOrigin)) return callback(null, true);
+      if (isLocalDevelopmentOrigin(requestOrigin)) return callback(null, true);
       return callback(new Error(`Not allowed by CORS: ${requestOrigin}`));
     },
     methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
